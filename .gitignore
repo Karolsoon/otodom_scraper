@@ -1,0 +1,9 @@
+# Python gitignore
+
+env/
+__pycache__/
+*/__pycache__/*
+source_folder/ID*
+source_folder/*.txt
+
+src/database/links.sqlite3
