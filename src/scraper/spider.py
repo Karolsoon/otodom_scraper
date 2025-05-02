@@ -181,7 +181,7 @@ class Scraper_Service:
     def __set_google_maps_addresses(self) -> None:
         """
         Set the address with Google Roads API based on an offers coordinates.
-        Triggers only for url_ids that have no entry in the addresses_derrived table.
+        Triggers only for url_ids that have no entry in the normalized_addresses table.
         """
         rows = db.get_urls_without_google_addresses()
         log.info(f'{len(rows)} URLs')
