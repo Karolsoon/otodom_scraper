@@ -147,6 +147,7 @@ class Scraper_Service:
         """
         Parse the detail pages and insert the data into the database.
         """
+        fails = []
         for id4, filepath in track(self.filepaths.items(),
                           description=f'Parsing offers...',
                           total=len(self.filepaths),
@@ -154,12 +155,16 @@ class Scraper_Service:
             offer_data = self.__parse_detail_page(filepath)
             record = self.processor.prepare_data_for_insert(offer_data)
 
-            db.upsert_offer(id4, self.listing_for, record)
-            db.update_audit_log_parsed(
-                html_file_path=filepath,
-                parsed_at=self.run_time
-            )
-        log.info(f'Parsed {len(self.filepaths)} offers')
+            if db.upsert_offer(id4, self.listing_for, record):
+                db.update_audit_log_parsed(
+                    html_file_path=filepath,
+                    parsed_at=self.run_time
+                )
+            else:
+                fails.append(id4)
+        log.info(f'Parsed {len(self.filepaths) - len(fails)} offers')
+        if fails:
+            log.warning(f'Failed {len(fails)}: {str(fails)[1:-1]}')
             
     def __parse_detail_page(self, file: str) -> dict[str, dict[str, str|int|None]]:
         offer = {}

@@ -78,6 +78,7 @@ def create_tables():
             floor INTEGER NULL,
             rooms INTEGER NOT NULL,
             "build_year" INTEGER NULL,
+            building_type TEXT NULL,
             building_material TEXT NULL,
             rent INTEGER NULL,
             "windows" TEXT NULL,
@@ -295,21 +296,28 @@ def upsert_offer(id4: str, entity: str, data: dict[str, str|int|None]) -> None:
     insert_query = """
     INSERT INTO offers (
         url_id, status, entity, city, postal_code, street, price, area, price_per_m2, floors, floor, rooms,
-        build_year, building_material, rent, windows, land_area, construction_status, market, posted_by,
+        build_year, building_type, building_material, rent, windows, land_area, construction_status, market, posted_by,
         coordinates_lat_lon, informacje_dodatkowe_json, media_json, ogrodzenie_json, dojazd_json, ogrzewanie_json,
         okolica_json, zabezpieczenia_json, wyposazenie_json, ground_plan, description, contact, owner
     ) VALUES (
         :url_id, :status, :entity, :city, :postal_code, :street, :price, :area, :price_per_m2, :floors, :floor, :rooms,
-        :build_year, :building_material, :rent, :windows, :land_area, :construction_status, :market, :posted_by,
+        :build_year, :building_type, :building_material, :rent, :windows, :land_area, :construction_status, :market, :posted_by,
         :coordinates_lat_lon, :informacje_dodatkowe_json, :media_json, :ogrodzenie_json, :dojazd_json,
         :ogrzewanie_json, :okolica_json, :zabezpieczenia_json, :wyposazenie_json, :ground_plan, :description,
         :contact, :owner
     )
     """
-    cursor.execute(insert_query, data)
-    conn.commit()
-    conn.close()
-    log.debug(f'OK {id4}')
+    try:
+        cursor.execute(insert_query, data)
+        conn.commit()
+        log.debug(f'OK {id4}')
+        conn.close()
+        return 1
+    except sqlite3.Error as ex:
+        conn.rollback()
+        log.warning(f'FAILED {data["url_id"]}, {ex}')
+        conn.close()
+        return 0
 
 
 def update_audit_log_parsed(
