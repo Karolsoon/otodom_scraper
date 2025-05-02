@@ -116,7 +116,9 @@ def create_tables():
             city TEXT NOT NULL,
             postal_code TEXT NOT NULL,
             street TEXT NOT NULL,
-            maps_url TEXT NOT NULL
+            maps_url TEXT NOT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE (url_id, city, postal_code, street)
         );
     ''')
     conn.commit()
@@ -173,14 +175,14 @@ def _get_filter_clause(filters: list[tuple[str, str|int]]|None) -> str:
 
 def get_urls_without_google_addresses() -> list[dict[str, str]]:
     """
-    Get all URLs from the urls table without google data.
+    Get all URLs from the urls table without google data in normalized_addresses
     """
     conn = connect()
     cursor = conn.cursor()
     cursor.execute('''
         SELECT DISTINCT o.url_id, o.coordinates_lat_lon
         FROM offers o
-        LEFT JOIN addresses_derrived ad ON ad.url_id = o.url_id
+        LEFT JOIN normalized_addresses ad ON ad.url_id = o.url_id
         WHERE ad.city IS NULL
     ''')
     rows = cursor.fetchall()
@@ -344,7 +346,7 @@ def insert_address_derrived(
         conn = connect()
         cursor = conn.cursor()
         cursor.execute('''
-            INSERT INTO addresses_derrived (url_id, city, postal_code, street, maps_url)
+            INSERT INTO normalized_addresses (url_id, city, postal_code, street, maps_url)
             VALUES (?, ?, ?, ?, ?)
         ''', (id4, city, postal_code, street, maps_url))
         conn.commit()
