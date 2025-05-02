@@ -57,10 +57,13 @@ class File_Util:
                 file=self.source_folder / self.get_listing_filename(entity, _type, i)
             )
 
-    def write_detail_files(self, details: dict[str, requests.Response]) -> None:
+    def write_detail_files(self, details: dict[str, requests.Response]) -> dict[str, str]:
         """
         details is a dict where key is the URL and value is the html text
+
+        Returns a dict of id4: filename
         """
+        paths_to_detail_html = {}
         for url, page in details.items():
             id4 = url.split('-')[-1]
             self.__create_id4_folder_if_not_exists(id4)
@@ -69,9 +72,12 @@ class File_Util:
                 timestamp=self.run_time
             )
             self.write_file(content=page.text, file=Path(filename))
+            paths_to_detail_html[id4] = filename
+        log.info(f'{len(details)} files')
+        return paths_to_detail_html
 
     def write_file(self, content: str, file: Path) -> None:
-        log.info(f'{file}')
+        log.debug(f'{file}')
         with file.open(mode='tw', encoding='utf-8') as f:
             f.write(content)
 
@@ -115,6 +121,31 @@ class File_Util:
         """
         folder = self.source_folder / id4
         return folder.exists()
+
+    @staticmethod
+    def read_file(filepath: str, mode: str='tr', encoding: str='utf-8-sig') -> str|bytes:
+        """
+        Read a file and return its content
+        """
+        with open(filepath, mode=mode, encoding=encoding) as f:
+            return f.read()
+
+    @staticmethod
+    def create_file(path: str):
+        """
+        Create a file if it does not exist
+        """
+        Path(path).touch(exist_ok=True)
+
+    @staticmethod
+    def create_folder(path: str):
+        """
+        Create a folder if it does not exist
+        """
+        p = Path(path)
+        if p.is_file():
+            raise ValueError(f'{path} is a file, not a folder')
+        p.mkdir(parents=True, exist_ok=True)
 
     def __create_clean_source_folder(self):
         if not self.source_folder.exists():

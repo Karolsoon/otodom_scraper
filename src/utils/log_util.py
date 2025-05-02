@@ -3,7 +3,7 @@ import logging.handlers
 
 import config
 
-def get_logger(name: str, level: int|str, console: bool=True, file: bool=True):
+def get_logger(name: str, level: int|str, console: bool=True, file: bool=True, terminator: str='\n') -> logging.Logger:
     """
     name:
         The module name given by __name__
@@ -18,6 +18,7 @@ def get_logger(name: str, level: int|str, console: bool=True, file: bool=True):
     log = logging.getLogger(name)
     if console:
         console_handler = logging.StreamHandler()
+        console_handler.terminator = terminator
         console_handler.setFormatter(fmt=formatter)
         log.addHandler(console_handler)
         console_handler.setLevel(config.LOGGING['levels']['console'])

@@ -1,10 +1,16 @@
 import json
+from src.scraper import transformation
 
 
+with open('secrets.json', 'r') as f:
+    SECRETS: dict = json.load(f)
+
+
+GCP_API_KEY = SECRETS.get('GCP_API_KEY')
 DB_NAME = 'src/database/links.sqlite3'
 START_URLS = {
-    'houses': "https://www.otodom.pl/pl/wyniki/sprzedaz/dom/dolnoslaskie/glogowski/gmina-miejska--glogow/glogow?ownerTypeSingleSelect=ALL&distanceRadius=10&areaMin=80&viewType=listing",
-    'flats': ''
+    'houses': "https://www.otodom.pl/pl/wyniki/sprzedaz/dom/dolnoslaskie/glogowski/gmina-miejska--glogow/glogow?ownerTypeSingleSelect=ALL&distanceRadius=15&areaMin=70&viewType=listing",
+    'flats': 'https://www.otodom.pl/pl/wyniki/sprzedaz/mieszkanie/dolnoslaskie/glogowski/gmina-miejska--glogow/glogow?priceMax=1500000&areaMin=60&distanceRadius=5&viewType=listing'
 }
 DOMAIN_NAME = 'https://www.otodom.pl:443'
 OFFER_LINK_STARTSWITH = '/pl/oferta/'
@@ -58,6 +64,196 @@ HIERARCHIES = {
                 'input': 'soup'
             }
         ]
+    },
+    'offer_details': {
+        'stages': [
+            {
+                'path': [
+                    {'body': {}},
+                    {'script': {"id": "__NEXT_DATA__"}}
+                ],
+                'transformation': json.loads,
+                'input': 'soup'
+            },
+            {
+                'path': [
+                    {'props': {}},
+                    {'pageProps': {}},
+                    {'ad': {}}
+                ],
+                'transformation': None,
+                'input': 'json'
+            }
+        ]
+    },
+}
+
+
+HIERARCHY_DETAILS = {
+    'contact': {
+        'stages': [
+            {
+                'path': [
+                    {'contactDetails': {}}
+                ],
+                'transformation': None,
+                'input': 'json'
+            }
+        ],
+        'transformation': transformation.filter_dict,
+        'attributes': [
+            'name',
+            'type',
+            'phones'
+        ]
+    },
+    'owner': {
+        'stages': [
+            {
+                'path': [
+                    {'owner': {}}
+                ],
+                'transformation': None,
+                'input': 'json'
+            }
+        ],
+        'transformation': transformation.filter_dict,
+        'attributes': [
+            'name',
+            'type',
+            'phones',
+            'email',
+            'contacts'
+        ]
+    },
+    'coordinates': {
+        'stages': [
+            {
+                'path': [
+                    {'location': {}},
+                    {'coordinates': {}}
+                ],
+                'transformation': None,
+                'input': 'json'
+            }
+        ],
+        'transformation': transformation.filter_dict,
+        'attributes': [
+            'latitude',
+            'longitude'
+        ]
+    },
+    'images_urls': {
+        'stages': [
+            {
+                'path': [
+                    {'images': {}}
+                ],
+                'transformation': None,
+                'input': 'json'
+            }
+        ],
+        'transformation': transformation.extract_from_list_of_dict,
+        'attributes': [
+            'large'
+        ]
+    },
+    'city': {
+        'stages': [
+            {
+                'path': [
+                    {'location': {}},
+                    {'address': {}},
+                    {'city': {}}
+                ],
+                'transformation': None,
+                'input': 'json'
+            }
+        ],
+        'transformation': transformation.filter_dict,
+        'attributes': [
+            'id',
+            'name'
+        ]
+    },
+    'street': {
+        'stages': [
+            {
+                'path': [
+                    {'location': {}},
+                    {'address': {}},
+                    {'street': {}}
+                ],
+                'transformation': None,
+                'input': 'json'
+            }
+        ],
+        'transformation': None
+    },
+    'characteristics': {
+        'stages': [
+            {
+                'path': [
+                    {'characteristics': {}}
+                ],
+                'transformation': None,
+                'input': 'json'
+            }
+        ],
+        'transformation': transformation.extract_characteristics,
+        'attributes': [
+            'value',
+            'localizedValue'
+        ],
+    },
+    'posted_by': {
+        'stages': [
+            {
+                'path': [
+                    {'advertType': {}}
+                ],
+                'transformation': None,
+                'input': 'json'
+            }
+        ],
+        'transformation': None
+    },
+    'description': {
+        'stages': [
+            {
+                'path': [
+                    {'description': {}}
+                ],
+                'transformation': None,
+                'input': 'json'
+            }
+        ],
+        'transformation': None
+    },
+    'other': {
+        'stages': [
+            {
+                'path': [
+                    {'featuresByCategory': {}}
+                ],
+                'transformation': None,
+                'input': 'json'
+            }
+        ],
+        'transformation': transformation.extract_features
+    },
+    'build_year': {
+        'stages': [
+            {
+                'path': [
+                    {'target': {}},
+                    {'buildYear': {}}
+                ],
+                'transformation': None,
+                'input': 'json'
+            }
+        ],
+        'transformation': None
     }
 }
 
@@ -75,7 +271,7 @@ HEADERS = {
 }
 LOGGING = {
     'formatter': {
-        'fmt': '{asctime}\t{levelname}\t{name}\t{funcName}\t{message}',
+        'fmt': '{asctime}\t{levelname}\t{module}\t{funcName}\t{message}',
         'style': '{',
         'datefmt': '%Y-%m-%d %H:%M:%S'
     },

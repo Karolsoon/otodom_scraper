@@ -1,9 +1,12 @@
 # Python gitignore
 
+
 env/
 __pycache__/
 */__pycache__/*
 source_folder/ID*
 source_folder/*.txt
+secrets.json
+logs
 
 src/database/links.sqlite3
