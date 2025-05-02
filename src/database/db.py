@@ -115,7 +115,8 @@ def create_tables():
             url_id TEXT NOT NULL,
             city TEXT NOT NULL,
             postal_code TEXT NOT NULL,
-            street TEXT NOT NULL
+            street TEXT NOT NULL,
+            maps_url TEXT NOT NULL
         );
     ''')
     conn.commit()
@@ -333,7 +334,8 @@ def insert_address_derrived(
     id4: str,
     city: str,
     postal_code: str,
-    street: str
+    street: str,
+    maps_url: str
 ) -> None:
     """
     Insert an address into the normalized_addresses table.
@@ -342,9 +344,9 @@ def insert_address_derrived(
         conn = connect()
         cursor = conn.cursor()
         cursor.execute('''
-            INSERT INTO addresses_derrived (url_id, city, postal_code, street)
-            VALUES (?, ?, ?, ?)
-        ''', (id4, city, postal_code, street))
+            INSERT INTO addresses_derrived (url_id, city, postal_code, street, maps_url)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (id4, city, postal_code, street, maps_url))
         conn.commit()
     except sqlite3.IntegrityError as ex:
         log.error(f'ALREADY EXISTS {id4}')

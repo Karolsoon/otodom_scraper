@@ -180,7 +180,7 @@ class Scraper_Service:
 
     def __set_google_maps_addresses(self) -> None:
         """
-        Set the address with Google Roads API based on offer coordinates.
+        Set the address with Google Roads API based on an offers coordinates.
         Triggers only for url_ids that have no entry in the addresses_derrived table.
         """
         rows = db.get_urls_without_google_addresses()
@@ -189,7 +189,8 @@ class Scraper_Service:
                          description='Fetching addresses...',
                          total=len(rows),
                          show_speed=False):
-            address_data = Reverse_Geocoding.get_geo(
-                row.get('coordinates_lat_lon'))
+            latlon = row.get('coordinates_lat_lon')
+            address_data = Reverse_Geocoding.get_geo(latlon)
+            address_data['maps_url'] = Reverse_Geocoding.get_url(latlon)
             db.insert_address_derrived(row.get('url_id'), **address_data)
             sleep(0.25)
