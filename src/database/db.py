@@ -191,6 +191,29 @@ def get_urls_without_google_addresses() -> list[dict[str, str]]:
     return [{k: row[k] for k in row.keys()} for row in rows]
 
 
+def get_latest_id4_status(url_id: str) -> int:
+    """
+    Returns the int status of a url_id from the urls table.
+    1  - active
+    2  - historical/expired
+    -1 - not found in db
+    """
+    conn = connect()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT u.status
+        FROM urls u
+        WHERE url_id = ?
+        ORDER BY id DESC
+        LIMIT 1
+    ''', (url_id,))
+    status = cursor.fetchone()
+    conn.close()
+    if len(status):
+        return list(status)[0]
+    return -1
+
+
 def insert_url_if_not_exists(id4: str, url: str, timestamp: str, house_or_flat: str) -> int:
     """
     Insert a URL into the urls table.

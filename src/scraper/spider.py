@@ -154,6 +154,7 @@ class Scraper_Service:
                           show_speed=False):
             offer_data = self.__parse_detail_page(filepath)
             record = self.processor.prepare_data_for_insert(offer_data)
+            record['status'] = db.get_latest_url_id_status(id4)
 
             if db.upsert_offer(id4, self.listing_for, record):
                 db.update_audit_log_parsed(

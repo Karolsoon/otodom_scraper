@@ -7,6 +7,10 @@ with open('secrets.json', 'r') as f:
 
 
 GCP_API_KEY = SECRETS.get('GCP_API_KEY')
+SMS_APIKEY = SECRETS.get('SMS_APIKEY')
+SMS_PASSWORD = SECRETS.get('SMS_PASSWORD')
+SMS_NAME = SECRETS.get('SMS_NAME')
+
 DB_NAME = 'src/database/links.sqlite3'
 START_URLS = {
     'houses': "https://www.otodom.pl/pl/wyniki/sprzedaz/dom/dolnoslaskie/glogowski/gmina-miejska--glogow/glogow?ownerTypeSingleSelect=ALL&distanceRadius=15&areaMin=70&viewType=listing",
