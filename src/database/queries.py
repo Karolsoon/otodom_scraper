@@ -141,6 +141,7 @@ class Normalized_Addresses:
             city TEXT NOT NULL,
             postal_code TEXT NOT NULL,
             street TEXT NOT NULL,
+            coordinates_lat_lon TEXT NOT NULL,
             maps_url TEXT NOT NULL,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             UNIQUE (url_id, city, postal_code, street)

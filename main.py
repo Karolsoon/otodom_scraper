@@ -13,6 +13,8 @@ flats_scraper.run()
 
 # TODO: add logging of errors for run_ids
 
+# TODO: add some generic SELECT queries to be able to fetch relevant offers. API? UI? CLI? JSON?
+
 # TODO: download images? Maybe at watchman where it is decided 
 # which offer is relatable/important?
 # Sounds like a plan.
