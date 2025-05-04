@@ -272,7 +272,9 @@ class Scraper_Service:
         Set the address with Google Roads API based on an offers coordinates.
         Triggers only for url_ids that have no entry in the normalized_addresses table.
         """
-        rows = db.get_urls_without_google_addresses()
+        rows = db.execute_with_return(
+            queries.Normalized_Addresses.get_coordinates_to_add
+        )
         log.info(f'{len(rows)} URLs')
         for row in track(rows,
                          description='Fetching addresses...',

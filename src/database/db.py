@@ -120,23 +120,6 @@ def _get_filter_clause(filters: list[tuple[str, str|int]]|None) -> str:
     return filter_clause
 
 
-def get_urls_without_google_addresses() -> list[dict[str, str]]:
-    """
-    Get all URLs from the urls table without google data in normalized_addresses
-    """
-    conn = connect()
-    cursor = conn.cursor()
-    cursor.execute('''
-        SELECT DISTINCT o.url_id, o.coordinates_lat_lon
-        FROM offers o
-        LEFT JOIN normalized_addresses ad ON ad.url_id = o.url_id
-        WHERE ad.city IS NULL
-    ''')
-    rows = cursor.fetchall()
-    conn.close()
-    return [{k: row[k] for k in row.keys()} for row in rows]
-
-
 def get_latest_id4_status(url_id: str) -> int:
     """
     Returns the int status of a url_id from the urls table.

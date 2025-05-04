@@ -146,6 +146,16 @@ class Normalized_Addresses:
             UNIQUE (url_id, city, postal_code, street)
         );
     """
+    get_coordinates_to_add = f"""
+        SELECT DISTINCT
+            o.url_id,
+            o.coordinates_lat_lon
+        FROM {Offers.TABLE_NAME} o
+        LEFT OUTER JOIN {TABLE_NAME} n ON n.url_id = o.url_id
+        WHERE NOT EXISTS (
+            SELECT 1 FROM {TABLE_NAME} WHERE url_id = o.url_id AND coordinates_lat_lon = o.coordinates_lat_lon
+        );
+    """
 
 
 class Favorites:
