@@ -1,7 +1,5 @@
 from pathlib import Path
 
-import requests
-
 import config
 from src.utils.log_util import get_logger
 
@@ -25,19 +23,6 @@ class File_Util:
     def write(self, path: str):
         pass
 
-    def write_urls(self, urls: list[str], filename: Path) -> None:
-        """
-        urls is a list of URLs
-        filename - recommend to use staticmethod get_filename
-
-        Be aware that the extension should be explicitly '.txt'
-        get_filename(entity='houses', _type='detail', extension='.txt')
-        """
-        log.info(f'{filename}')
-        with filename.open(mode='tw', encoding='utf-8') as f:
-            for link in urls:
-                f.write(link + '\n')
-
     def write_listing_files(self, list_of_html_to_dump: list[str], entity: str, _type: str) -> None:
         """
         list to dump is a list of str which contains html
@@ -57,24 +42,20 @@ class File_Util:
                 file=self.source_folder / self.get_listing_filename(entity, _type, i)
             )
 
-    def write_detail_files(self, details: dict[str, requests.Response]) -> dict[str, str]:
+    def write_detail_file(self, url: str, page: str) -> str:
         """
         details is a dict where key is the URL and value is the html text
 
-        Returns a dict of id4: filename
+        Returns a filepath to the file that was written
         """
-        paths_to_detail_html = {}
-        for url, page in details.items():
-            id4 = url.split('-')[-1]
-            self.__create_id4_folder_if_not_exists(id4)
-            filename = config.DETAIL_HTML_FILEPATH_TEMPLATE.format(
-                id4=id4,
-                timestamp=self.run_time
-            )
-            self.write_file(content=page.text, file=Path(filename))
-            paths_to_detail_html[id4] = filename
-        log.info(f'{len(details)} files')
-        return paths_to_detail_html
+        id4 = url.split('-')[-1]
+        self.__create_id4_folder_if_not_exists(id4)
+        filename = config.DETAIL_HTML_FILEPATH_TEMPLATE.format(
+            id4=id4,
+            timestamp=self.run_time
+        )
+        self.write_file(content=page, file=Path(filename))
+        return filename
 
     def write_file(self, content: str, file: Path) -> None:
         log.debug(f'{file}')
@@ -90,13 +71,6 @@ class File_Util:
         _type = '_' + _type if _type else ''
         i = '_' + str(i) if i is not None else ''
         return f'{entity}{_type}{i}{extension}'
-    
-    def get_url_list_path(self, entity: str) -> Path:
-        """
-        entity is houses or flats
-        _type is listing or detail
-        """
-        return Path(self.SOURCE_FOLDER + f'/{entity}_{self.run_time}_urls.txt')
 
     def get_detail_filename(self, url: str) -> str:
         """

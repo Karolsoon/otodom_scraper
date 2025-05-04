@@ -5,11 +5,14 @@ from src.watchman.notifications import SMS
 # houses_scraper = Scraper_Service(listing_for='houses')
 # houses_scraper.run()
 
-# flats_scraper = Scraper_Service(listing_for='flats')
-# flats_scraper.run()
+flats_scraper = Scraper_Service(listing_for='flats')
+flats_scraper.run()
 
 # SMS.send('Nowe oferty na OTODOM zostaly dodane.', 'some_number')
 
+
+# TODO: Add to normalized_addresses table a column for coordinates so that
+# The maps URL gets updated when the coordinates get updated (already happened)
 
 # TODO: make error handling more robust i.e. failure in any of the
 # parsing steps should result in removing the work item 

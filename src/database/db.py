@@ -1,5 +1,6 @@
 import sqlite3
 
+from src.database import queries
 from src.utils.log_util import get_logger
 import config
 
@@ -18,17 +19,34 @@ def connect() -> sqlite3.Connection:
     return conn
 
 
-def execute(query: str) -> list[dict[str, str]]:
+def execute_with_return(query: str, data: tuple|None = None) -> list[dict[str, str]]:
     """
     Execute a query and return the result.
     """
     conn = connect()
     cursor = conn.cursor()
-    cursor.execute(query)
+    if data:
+        cursor.execute(query, data)
+    else:
+        cursor.execute(query)
     rows = cursor.fetchall()
+    conn.commit()
     conn.close()
     return [{k: row[k] for k in row.keys()} for row in rows]
 
+def execute_no_return(query: str, data: tuple|None = None) -> None:
+    """
+    Execute a non-returning DDL query
+    using the provided data tuple - if provided
+    """
+    conn = connect()
+    cursor = conn.cursor()
+    if data:
+        cursor.execute(query, data)
+    else:
+        cursor.execute(query)
+    conn.commit()
+    conn.close()
 
 def create_tables():
     """
@@ -36,96 +54,24 @@ def create_tables():
     """
     conn = connect()
     cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS urls (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            url_id TEST NOT NULL,
-            url TEXT NOT NULL,
-            entity TEXT NOT NULL,
-            status INT NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            expired_at DATETIME DEFAULT NULL
-        )
-    ''')
-    conn.commit()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS audit_logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            url_id TEXT NOT NULL,
-            status_code TEXT NOT NULL,
-            html_file_path TEXT NOT NULL,
-            error_message TEXT DEFAULT NULL,
-            status INT NOT NULL,
-            visited_at DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
-            parsed_at DATETIME NULL DEFAULT NULL
-        )
-    ''')
-    conn.commit()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS offers (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            url_id TEXT NOT NULL,
-            "status" INTEGER NOT NULL,
-            entity TEXT NOT NULL,
-            city TEXT NOT NULL,
-            postal_code TEXT NULL,
-            street TEXT NULL,
-            price INTEGER NOT NULL,
-            area INTEGER NOT NULL,
-            price_per_m2 INTEGER NOT NULL,
-            floors INTEGER NULL,
-            floor INTEGER NULL,
-            rooms INTEGER NOT NULL,
-            "build_year" INTEGER NULL,
-            building_type TEXT NULL,
-            building_material TEXT NULL,
-            rent INTEGER NULL,
-            "windows" TEXT NULL,
-            land_area INTEGER NULL,
-            construction_status TEXT NULL,
-            market TEXT NULL,
-            posted_by TEXT NULL,
-            coordinates_lat_lon TEXT NULL,
-            informacje_dodatkowe_json TEXT NULL,
-            media_json TEXT NULL,
-            ogrodzenie_json TEXT NULL,
-            dojazd_json TEXT NULL,
-            ogrzewanie_json TEXT NULL,
-            okolica_json TEXT NULL,
-            zabezpieczenia_json TEXT NULL,
-            wyposazenie_json TEXT NULL,
-            ground_plan TEXT NULL,
-            description TEXT NULL,
-            contact TEXT NOT NULL,
-            "owner" TEXT NULL,
-            created_at DATETIME NULL DEFAULT CURRENT_TIMESTAMP
-        );
-    ''')
-    conn.commit()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS favorites (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            url_id TEXT NOT NULL,
-            UNIQUE(url_id, status)
-        );
-    ''')
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS normalized_addresses (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            url_id TEXT NOT NULL,
-            city TEXT NOT NULL,
-            postal_code TEXT NOT NULL,
-            street TEXT NOT NULL,
-            maps_url TEXT NOT NULL,
-            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE (url_id, city, postal_code, street)
-        );
-    ''')
-    conn.commit()
-    cursor.execute('''
-                   ''')
-    conn.close()
+    try:
+        cursor.execute(queries.Urls.DDL)
+        conn.commit()
+        cursor.execute(queries.Audit_Logs.DDL)
+        conn.commit()
+        cursor.execute(queries.Offers.DDL)
+        conn.commit()
+        cursor.execute(queries.Favorites.DDL)
+        conn.commit()
+        cursor.execute(queries.Normalized_Addresses.DDL)
+        conn.commit()
+        cursor.execute(queries.Run_Logs.DDL)
+        conn.commit()
+        conn.close()
+    except sqlite3.Error as exc:
+        conn.rollback()
+        conn.close()
+        raise exc from exc
 
 
 def get_active_urls(entity: str|None = None) -> list[str]:
@@ -250,7 +196,7 @@ def insert_url_if_not_exists(id4: str, url: str, timestamp: str, house_or_flat: 
 def update_url(
         id4: str,
         updated_at: str,
-        expited_at: str|None=None,
+        expired_at: str|None=None,
         status: int=1) -> int:
     """
     Update the updated_at of a URL
@@ -263,7 +209,7 @@ def update_url(
             UPDATE urls
             SET status = ?, updated_at = ?, expired_at = ?
             WHERE url_id = ? and status = 1
-        ''', (status, updated_at, expited_at, id4))
+        ''', (status, updated_at, expired_at, id4))
         conn.commit()
         log.debug(f'OK {id4}')
         return 1
@@ -341,26 +287,6 @@ def upsert_offer(id4: str, entity: str, data: dict[str, str|int|None]) -> None:
         log.warning(f'FAILED {data["url_id"]}, {ex}')
         conn.close()
         return 0
-
-
-def update_audit_log_parsed(
-        html_file_path: str,
-        parsed_at: str
-    ) -> None:
-    """
-    Updates the parsed at column for an audit_log entry.
-    Since the html_file_path is unique, it will be used to identify the entry.
-    """
-    conn = connect()
-    cursor = conn.cursor()
-    cursor.execute('''
-        UPDATE audit_logs
-        SET parsed_at = ?
-        WHERE html_file_path = ?
-    ''', (parsed_at, html_file_path))
-    conn.commit()
-    conn.close()
-    log.debug(f'OK {html_file_path}')
 
 
 def insert_address_derrived(

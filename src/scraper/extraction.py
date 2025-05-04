@@ -2,6 +2,7 @@ from datetime import datetime as dt
 from typing import Any, Callable
 from time import sleep
 from random import randint
+from dataclasses import dataclass
 
 from bs4 import BeautifulSoup
 import requests
@@ -14,6 +15,20 @@ from src.scraper import parser
 
 log = get_logger(__name__, 30, True, True)
 log.setLevel('INFO')
+
+
+@dataclass
+class Detail_Page_Audit_Item:
+    id: int
+    url_id: str
+    url: str
+    response: requests.Response|None = None
+    extracted_offer_data: dict[str, str|int|float]|None = None
+    filepath: str|None = None
+    visited_at: str|None = None
+    parsed_at: str|None = None
+    error_step: str|None = None
+    error_message: str|None = None
 
 
 class Page_Processor:
@@ -144,7 +159,6 @@ class Link_Extractor:
         self.listing = listing
         self.detail_urls: list[str] = []
         self.pages_listing: list[requests.Response] = []
-        self.pages_detail: dict[str, requests.Response] = {} # {url: requests.Response}
         self.pagination: dict[str, int] = {}
 
         self.session = requests.Session()
@@ -177,13 +191,18 @@ class Link_Extractor:
             self.__sleep_randomly()
             self.pages_listing.append(self.__fetch_page(url))
 
-    def set_detail_pages(self) -> None:
-        for link in track(self.detail_urls,
+    def get_detail_pages(
+            self,
+            detail_page_audit_items: list[Detail_Page_Audit_Item]
+        ) -> list[Detail_Page_Audit_Item]:
+        for item in track(detail_page_audit_items,
                           description='Downloading offers...',
-                          total=len(self.detail_urls),
+                          total=len(detail_page_audit_items),
                           show_speed=False):
             sleep(0.25)
-            self.pages_detail[link] = self.__fetch_page(link)
+            item.response = self.__fetch_page(item.url)
+            item.visited_at = dt.now().isoformat()
+        return detail_page_audit_items
 
     def set_detail_urls(self, paths: list[str]) -> None:
         self.detail_urls = list({
@@ -191,7 +210,7 @@ class Link_Extractor:
             for link
             in paths
         })
-        log.info(f'{len(self.detail_urls)} URLs')
+        log.info(f'{len(self.detail_urls)} URLs extracted')
 
     def set_listing_type(self, listing_for: str) -> None:
         if listing_for not in self.START_URLS:
