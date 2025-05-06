@@ -283,6 +283,7 @@ class Scraper_Service:
             latlon = row.get('coordinates_lat_lon')
             address_data = Reverse_Geocoding.get_geo(latlon)
             address_data['maps_url'] = Reverse_Geocoding.get_url(latlon)
+            address_data['coordinates_lat_lon'] = latlon
             db.insert_address_derrived(row.get('url_id'), **address_data)
             sleep(0.25)
 
