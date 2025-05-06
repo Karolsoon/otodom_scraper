@@ -144,7 +144,7 @@ class Normalized_Addresses:
             coordinates_lat_lon TEXT NOT NULL,
             maps_url TEXT NOT NULL,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE (url_id, street, coordinates)
+            UNIQUE (url_id, street, coordinates_lat_lon)
         );
     """
     get_coordinates_to_add = f"""
