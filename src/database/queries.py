@@ -124,6 +124,7 @@ class Offers:
             zabezpieczenia_json TEXT NULL,
             wyposazenie_json TEXT NULL,
             ground_plan TEXT NULL,
+            images TEXT NULL,
             description TEXT NULL,
             contact TEXT NOT NULL,
             "owner" TEXT NULL,

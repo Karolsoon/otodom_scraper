@@ -116,6 +116,7 @@ class Page_Processor:
             "okolica_json": str(result.get('other', {}).get("Okolica", [])).replace("'", '"'),
             "zabezpieczenia_json": str(result.get('other', {}).get("Zabezpieczenia", [])).replace("'", '"'),
             "wyposazenie_json": str(result.get('other', {}).get("Wyposażenie", [])).replace("'", '"'),
+            "images": str(result.get('images_urls', [])).replace("'", '"'),
             "contact": str(result.get('contact')).replace("'", '"'),
             "owner": str(result.get('owner')).replace("'", '"'),
         }

@@ -250,12 +250,12 @@ def upsert_offer(id4: str, entity: str, data: dict[str, str|int|None]) -> None:
         url_id, status, entity, city, postal_code, street, price, area, price_per_m2, floors, floor, rooms,
         build_year, building_type, building_material, rent, windows, land_area, construction_status, market, posted_by,
         coordinates_lat_lon, informacje_dodatkowe_json, media_json, ogrodzenie_json, dojazd_json, ogrzewanie_json,
-        okolica_json, zabezpieczenia_json, wyposazenie_json, ground_plan, description, contact, owner
+        okolica_json, zabezpieczenia_json, wyposazenie_json, ground_plan, images, description, contact, owner
     ) VALUES (
         :url_id, :status, :entity, :city, :postal_code, :street, :price, :area, :price_per_m2, :floors, :floor, :rooms,
         :build_year, :building_type, :building_material, :rent, :windows, :land_area, :construction_status, :market, :posted_by,
         :coordinates_lat_lon, :informacje_dodatkowe_json, :media_json, :ogrodzenie_json, :dojazd_json,
-        :ogrzewanie_json, :okolica_json, :zabezpieczenia_json, :wyposazenie_json, :ground_plan, :description,
+        :ogrzewanie_json, :okolica_json, :zabezpieczenia_json, :wyposazenie_json, :ground_plan, :images, :description,
         :contact, :owner
     )
     """

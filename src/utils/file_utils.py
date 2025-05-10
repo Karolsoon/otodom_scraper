@@ -20,6 +20,9 @@ class File_Util:
         self.source_folder = Path(folder)
         self.__create_clean_source_folder()
 
+    def get_source_folder(self) -> Path:
+        return self.source_folder
+
     def write(self, path: str):
         pass
 
@@ -61,6 +64,28 @@ class File_Util:
         log.debug(f'{file}')
         with file.open(mode='tw', encoding='utf-8') as f:
             f.write(content)
+
+
+    def delete(self, f: Path) -> bool:
+        try:
+            f.unlink(missing_ok=False)
+            return True
+        except FileNotFoundError:
+            return False
+
+    def remove_htmls_except_two_latest_ones(self, folder: Path) -> int:
+        files = self.get_files_from(folder)
+        files.sort()
+        deleted_count = 0
+        for file in files[:-2]:
+            if self.delete(file):
+                deleted_count += 1
+        print('Deleted: ', deleted_count)
+        return deleted_count
+
+    @staticmethod
+    def get_files_from(folder: Path, extension: str='*.html') -> list[Path]:
+        return [file for file in folder.glob(extension)]
 
     @staticmethod
     def get_listing_filename(
