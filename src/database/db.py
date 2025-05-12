@@ -56,16 +56,12 @@ def create_tables():
     cursor = conn.cursor()
     try:
         cursor.execute(queries.Urls.DDL)
-        conn.commit()
         cursor.execute(queries.Audit_Logs.DDL)
-        conn.commit()
         cursor.execute(queries.Offers.DDL)
-        conn.commit()
         cursor.execute(queries.Favorites.DDL)
-        conn.commit()
         cursor.execute(queries.Normalized_Addresses.DDL)
-        conn.commit()
         cursor.execute(queries.Run_Logs.DDL)
+        cursor.execute(queries.Images.DDL)
         conn.commit()
         conn.close()
     except sqlite3.Error as exc:

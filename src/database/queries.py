@@ -88,6 +88,17 @@ class Run_Logs:
     """
 
 
+class Favorites:
+    TABLE_NAME = 'favorites'
+    DDL = f"""
+       CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            url_id TEXT NOT NULL,
+            UNIQUE(url_id, status)
+        );
+    """
+
+
 class Offers:
     TABLE_NAME = 'offers'
     DDL = f"""
@@ -133,6 +144,46 @@ class Offers:
     """
 
 
+class Images:
+    TABLE_NAME = 'images'
+    DDL = f"""
+        CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            url_id TEXT NOT NULL,
+            image_id TEXT NOT NULL,
+            status_code INTEGER NOT NULL,
+            location TEXT NOT NULL,
+            "type" TEXT NOT NULL, -- floor_plan OR real_estate
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(url_id, image_id)
+        );
+    """
+    get_images_to_download_by_url_id = f"""
+        SELECT DISTINCT o.url_id, o.images
+        FROM {Offers.TABLE_NAME} o
+        LEFT JOIN {TABLE_NAME} i ON i.url_id = o.url_id
+        WHERE i.image_id IS NULL
+          AND o.images IS NOT NULL
+          AND o.url_id = ?
+    """
+    get_all_images_to_download = f"""
+        SELECT DISTINCT o.url_id, o.images
+        FROM {Offers.TABLE_NAME} o
+        LEFT JOIN {TABLE_NAME} i ON i.url_id = o.url_id
+        WHERE o.images IS NOT NULL
+    """
+    get_image_id = f"""
+        SELECT url_id, image_id
+        FROm {TABLE_NAME} i
+        WHERE url_id = ?
+          AND image_id = ?
+    """
+    create_image_entry = f"""
+        INSERT INTO images (url_id, image_id, status_code, location, type) VALUES
+        (?, ?, ?, ?, ?);
+    """
+
+
 class Normalized_Addresses:
     TABLE_NAME = 'normalized_addresses'
     DDL = f"""
@@ -156,16 +207,5 @@ class Normalized_Addresses:
         LEFT OUTER JOIN {TABLE_NAME} n ON n.url_id = o.url_id
         WHERE NOT EXISTS (
             SELECT 1 FROM {TABLE_NAME} WHERE url_id = o.url_id AND coordinates_lat_lon = o.coordinates_lat_lon
-        );
-    """
-
-
-class Favorites:
-    TABLE_NAME = 'favorites'
-    DDL = f"""
-       CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            url_id TEXT NOT NULL,
-            UNIQUE(url_id, status)
         );
     """

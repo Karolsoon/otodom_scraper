@@ -172,15 +172,6 @@ class Scraper_Service:
             return items
         raise ValueError(f'Invalid value for stage provided: {stage}.')
 
-    def clean_url_id_folders(self) -> None:
-        total_count = 0
-        log.info('Removing old HTML files. Leaving 2 latest ones.')
-        for file in self.file_util.get_source_folder().iterdir():
-            if file.is_dir():
-                log.debug('Cleaning ', file)
-                total_count += self.file_util.remove_htmls_except_two_latest_ones(file)
-        log.info(f'Old files deleted: {total_count}')
-
     def __update_urls_and_logs_in_database(
             self,
             detail_page_audit_items: list[Detail_Page_Audit_Item]) -> None:
@@ -227,7 +218,7 @@ class Scraper_Service:
         if not detail_page_audit_items:
             detail_page_audit_items = self.make_detail_page_audit_item_objects('parsing')
         for item in track(detail_page_audit_items,
-                          description=f'Parsing offers...',
+                          description='Parsing offers...',
                           total=len(detail_page_audit_items),
                           show_speed=False):
             offer_data = self.__parse_detail_page(item.filepath)

@@ -11,6 +11,7 @@ from rich.progress import track
 import config
 from src.utils.log_util import get_logger
 from src.scraper import parser
+from src.utils.http_util import HTTP_Util
 
 
 log = get_logger(__name__, 30, True, True)
@@ -149,20 +150,20 @@ class Page_Processor:
 
 class Link_Extractor:
     START_URLS = config.START_URLS
-    HEADERS = config.HEADERS
     DOMAIN_NAME = config.DOMAIN_NAME
 
     def __init__(
             self,
             listing: str='houses',
-            run_time: dt=dt.now().isoformat()) -> None:
+            run_time: dt=dt.now().isoformat(),
+            http_util: HTTP_Util=HTTP_Util()
+        ) -> None:
         self.run_time = run_time
         self.listing = listing
         self.detail_urls: list[str] = []
         self.pages_listing: list[requests.Response] = []
         self.pagination: dict[str, int] = {}
-
-        self.session = requests.Session()
+        self.http_util = http_util
 
         self.set_listing_type(listing)
 
@@ -227,28 +228,9 @@ class Link_Extractor:
 
     def __fetch_page(self, url: str) -> requests.Response:
         """
-        Sends a HTTP request to a url with predefined headers.
-
-        Returns a tuple of status_code, html_text
+        Returns a a requests.Response onject
         """
-        log.debug(f'{url}')
-        response = self.session.get(url, headers=self.HEADERS)
-        code = response.status_code
-        try:
-            response.raise_for_status()
-            if code in range(300, 400):
-                log.warning(f'{code} {response.text}')
-                # TODO: handle redirects
-            else:
-                log.debug(f'\033[92m{code} OK\033[0m')
-        except requests.exceptions.HTTPError as ex:
-            code = ex.response.status_code
-            if code in range(400, 500):
-                log.debug(f'\033[91m{code} EXPIRED\033[0m')
-            elif code > 500:
-                log.error(f'\033[91m{code} SERVER_FAULT\033[0m')
-                # TODO retry-after?
-        return response
+        return self.http_util.fetch_page(url)
 
     def __build_url_for_detail(self, path: str):
         return self.DOMAIN_NAME + path

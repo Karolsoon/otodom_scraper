@@ -23,8 +23,16 @@ class File_Util:
     def get_source_folder(self) -> Path:
         return self.source_folder
 
-    def write(self, path: str):
-        pass
+    def write(self, path: str|Path, data: str|bytes, mode: str='wt'):
+        try:
+            if isinstance(path, str):
+                path = Path(path)
+            with path.open(mode=mode) as file:
+                file.write(data)
+        except Exception as e:
+            log.error(f'Failed to write to {path}')
+            log.exception(e)
+            raise e from e
 
     def write_listing_files(self, list_of_html_to_dump: list[str], entity: str, _type: str) -> None:
         """
@@ -80,7 +88,7 @@ class File_Util:
         for file in files[:-2]:
             if self.delete(file):
                 deleted_count += 1
-        print('Deleted: ', deleted_count)
+        log.debug(f'Deleted: {deleted_count}')
         return deleted_count
 
     @staticmethod
