@@ -62,6 +62,9 @@ def create_tables():
         cursor.execute(queries.Normalized_Addresses.DDL)
         cursor.execute(queries.Run_Logs.DDL)
         cursor.execute(queries.Images.DDL)
+        cursor.execute(queries.Date_Dim.DDL)
+        cursor.execute(queries.Date_Dim.POPULATE)
+        cursor.execute(queries.Views.offers_with_history.DDL)
         conn.commit()
         conn.close()
     except sqlite3.Error as exc:

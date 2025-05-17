@@ -13,7 +13,8 @@ SMS_NAME = SECRETS.get('SMS_NAME')
 
 DB_NAME = 'src/database/links.sqlite3'
 START_URLS = {
-    'houses': "https://www.otodom.pl/pl/wyniki/sprzedaz/dom/dolnoslaskie/glogowski/gmina-miejska--glogow/glogow?ownerTypeSingleSelect=ALL&distanceRadius=15&areaMin=70&viewType=listing",
+    'houses_glogow': "https://www.otodom.pl/pl/wyniki/sprzedaz/dom/dolnoslaskie/glogowski/gmina-miejska--glogow/glogow?ownerTypeSingleSelect=ALL&distanceRadius=15&areaMin=70&viewType=listing",
+    'houses_radwanice': 'https://www.otodom.pl/pl/wyniki/sprzedaz/dom/dolnoslaskie/polkowicki/radwanice?distanceRadius=3&limit=36&ownerTypeSingleSelect=ALL&roomsNumber=%5BFOUR%2CFIVE%2CSIX_OR_MORE%5D&by=DEFAULT&direction=DESC&viewType=listing',
     'flats': 'https://www.otodom.pl/pl/wyniki/sprzedaz/mieszkanie/dolnoslaskie/glogowski/gmina-miejska--glogow/glogow?priceMax=1500000&areaMin=60&distanceRadius=5&viewType=listing'
 }
 DOMAIN_NAME = 'https://www.otodom.pl:443'

@@ -3,8 +3,11 @@ from src.watchman.notifications import SMS
 from src.watchman.watchdog import Watchdog
 
 
-houses_scraper = Scraper_Service(listing_for='houses')
-houses_scraper.run()
+houses_glogow_scraper = Scraper_Service(listing_for='houses_glogow')
+houses_glogow_scraper.run()
+
+houses_radwanice_scraper = Scraper_Service(listing_for='houses_radwanice')
+houses_radwanice_scraper.run()
 
 flats_scraper = Scraper_Service(listing_for='flats')
 flats_scraper.run()
@@ -12,7 +15,6 @@ flats_scraper.run()
 w = Watchdog()
 w.download_images()
 w.clean_url_id_folders()
-
 
 # SMS.send('Nowe oferty na OTODOM zostaly dodane.', 'some_number')
 

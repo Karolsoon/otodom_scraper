@@ -209,3 +209,215 @@ class Normalized_Addresses:
             SELECT 1 FROM {TABLE_NAME} WHERE url_id = o.url_id AND coordinates_lat_lon = o.coordinates_lat_lon
         );
     """
+
+
+class Date_Dim:
+    TABLE_NAME = 'date_dim'
+    DDL = f"""
+        CREATE TABLE IF NOT EXISTS date_dim (
+            date datetime PRIMARY KEY,          -- The date in YYYY-MM-DD format
+            year INTEGER NOT NULL,          -- The year (e.g., 2025)
+            month INTEGER NOT NULL,         -- The month (1-12)
+            day INTEGER NOT NULL,           -- The day of the month (1-31)
+            day_of_week TEXT NOT NULL,      -- The name of the day (e.g., Monday)
+            calendar_week INTEGER NOT NULL  -- The calendar week number (1-53)
+        );
+    """
+    POPULATE = f"""
+        -- Populate the date_dimension table
+        WITH RECURSIVE date_series AS (
+            SELECT date('2025-04-01 00:00:00') AS "date"
+            UNION ALL
+            SELECT date(date, '+1 day')
+            FROM date_series
+            WHERE date < date('2030-04-01')
+        )
+        INSERT INTO date_dim (date, year, month, day, day_of_week, calendar_week)
+        SELECT 
+            date,
+            CAST(strftime('%Y', date) AS INTEGER) AS year,
+            CAST(strftime('%m', date) AS INTEGER) AS month,
+            CAST(strftime('%d', date) AS INTEGER) AS day,
+            CASE strftime('%w', date)
+                WHEN '0' THEN 'Sunday'
+                WHEN '1' THEN 'Monday'
+                WHEN '2' THEN 'Tuesday'
+                WHEN '3' THEN 'Wednesday'
+                WHEN '4' THEN 'Thursday'
+                WHEN '5' THEN 'Friday'
+                WHEN '6' THEN 'Saturday'
+            END AS day_of_week,
+            CAST(strftime('%W', date) AS INTEGER) AS calendar_week
+        FROM date_series
+        WHERE NOT EXISTS (
+            SELECT 1 FROM date_dim WHERE date = date_series.date
+        );
+    """
+
+
+class Statistics:
+    offers_count_per_day = f"""
+        -- QUERY FOR RETURNING THE TOTAL OFFER COUNT PER DAY
+        -- Oferty aktualne od daty utworzenia
+        WITH current_offers AS (
+            SELECT DISTINCT
+                u.id,
+                datetime(strftime('%Y-%m-%dT00:00:00', u.created_at)) AS created_at
+            FROM {Urls.TABLE_NAME} u
+            GROUP BY u.id
+            HAVING status = 1
+        ),
+
+        expired_offers AS (
+            -- Oferty nieaktualne z datą ostatniej aktualizacji
+            SELECT DISTINCT
+                u.id,
+                MAX(datetime(strftime('%Y-%m-%dT00:00:00', u.updated_at))) AS updated_at
+            FROM {Urls.TABLE_NAME} u
+            GROUP BY u.id
+            HAVING status = 2
+        )
+
+        SELECT
+            dm.date AS "date",
+            CASE 
+                WHEN dm.date > date('now') THEN NULL
+                ELSE COUNT(DISTINCT co.id) + COUNT(DISTINCT eo.id)
+            END AS distinct_count
+        FROM {Date_Dim.TABLE_NAME} dm
+        LEFT OUTER JOIN current_offers co ON co.created_at <= dm.date
+        LEFT OUTER JOIN expired_offers eo ON eo.updated_at = dm.date
+        GROUP BY dm.date
+        HAVING dm.date <= date('now');
+    """
+
+class Views:
+    class offers_with_history:
+        TABLE_NAME = 'offers_with_history'
+        DDL = f"""
+            CREATE VIEW IF NOT EXISTS v_offers_change_history_all AS 
+            SELECT
+                RANK() OVER(PARTITION BY o.url_id ORDER BY o.created_at DESC) AS most_recent_order,
+                o.id,
+                o.created_at,
+                o.url_id,
+                o.status,
+                o.entity,
+                o.city,
+                COALESCE(na.postal_code, o.postal_code) AS postal_code,
+                COALESCE(o.street, na.street) AS street,
+                o.price,
+                o.area,
+                o.price_per_m2,
+                o.floors,
+                o.floor,
+                o.rooms,
+                o.build_year,
+                o.building_type,
+                o.building_material,
+                o.rent,
+                o.construction_status,
+                o.market,
+                o.posted_by,
+                o.coordinates_lat_lon,
+                o.informacje_dodatkowe_json,
+                o.media_json,
+                o.ogrodzenie_json,
+                o.dojazd_json,
+                o.ogrzewanie_json,
+                o.okolica_json,
+                o.zabezpieczenia_json,
+                o.wyposazenie_json,
+                o.ground_plan,
+                na.maps_url,
+                u.url,
+                o.description
+            FROM offers o
+            LEFT OUTER JOIN normalized_addresses na ON na.url_id = o.url_id
+            LEFT OUTER JOIN urls u ON u.url_id = o.url_id
+            GROUP BY o.url_id, o.price, o.area, o.price_per_m2, o.floors, o.floor, o.rooms, o.build_year, o.construction_status, o.market, o.coordinates_lat_lon, o.status
+            ORDER BY o.url_id DESC, most_recent_order ASC;
+        """
+        get_all = f"""
+            SELECT * FROM offers_change_history_all;
+        """
+        get_all_latest = f"""
+            SELECT * FROM offers_change_history_all
+            WHERE most_recent_order = 1;
+        """
+        get_all_active_latest = f"""
+            SELECT * FROM offers_change_history_all
+            WHERE most_recent_order = 1
+              AND status = 1;
+        """
+        get_all_expired_latest = f"""
+            SELECT * FROM offers_change_history_all
+            WHERE most_recent_order = 1
+              AND status = 2;
+        """
+        get_by_url_id = f"""
+            SELECT * FROM offers_change_history_all
+            WHERE url_id = ?;
+        """
+        get_latest_by_url_id = f"""
+            SELECT * FROM offers_change_history_all
+            WHERE url_id = ?
+              AND most_recent_order = 1;
+        """
+
+
+class Watchdog:
+    new_interesting_offers_last_1_day = f"""
+        SELECT DISTINCT v.*
+        FROM v_offers_change_history_all v
+        LEFT OUTER JOIN urls u ON u.url_id = v.url_id
+        WHERE u.created_at > datetime('now', '-1 days')
+        AND v.construction_status IN ('ready_to_use', 'to_completion')
+        AND (LOWER(v.building_type) <> 'ribbon' OR v.building_type IS NULL)
+        AND v.most_recent_order = 1
+        AND CAST(SUBSTR(v.coordinates_lat_lon, 1, INSTR(v.coordinates_lat_lon, ',') - 1) AS FLOAT) < 51.6712
+        AND v.city NOT IN ('Białołęka', 'Bucze', 'Trzebcz', 'Wilków', 'Serby', 'Grodziec Mały', 'Pęcław', 'Kaczyce', 'Kotla')
+        AND (LOWER(v.description) NOT LIKE '%do remontu%' AND LOWER(v.description) NOT LIKE '%całkowitego remontu%')
+        AND (
+            (v.city = 'Głogów' AND v.entity IN ('flats', 'houses'))
+            OR (v.city <> 'Głogów' AND v.entity = 'houses')
+        )
+        AND (
+                (v.street LIKE '%łowiańska%')
+            OR (v.rooms > 3 AND v.area > 75 AND v.floor < 3 AND v.entity = 'flats' AND v.market = 'secondary' AND v.price <= 650000)
+            OR (v.rooms > 3 AND v.area > 75 AND v.entity = 'flats' AND (v.market = 'primary' OR v.construction_status = 'to_completion') AND v.price <= 600000)
+            OR (v.rooms > 4 AND price < 550000)
+            OR (v.rooms > 2 AND v.area > 100 AND v.price < 400000)
+            OR (v.rooms > 3 AND v.construction_status = 'ready_to_use' AND v.price < 900000 AND v.wyposazenie_json <> '[]')
+            OR (v.rooms > 4 AND v.entity = 'houses' AND v.price < 550000)
+            OR (v.rooms > 4 AND v.entity = 'houses' AND v.price < 900000 AND v.construction_status = 'ready_to_use')
+            OR (v.rooms = -1)
+        )
+        AND v.status = 1
+    """
+    get_all_interesting_offers_incl_expired = f"""
+        SELECT DISTINCT v.*
+        FROM v_offers_change_history_all v
+        LEFT OUTER JOIN urls u ON u.url_id = v.url_id
+        WHERE v.construction_status IN ('ready_to_use', 'to_completion')
+        AND (LOWER(v.building_type) <> 'ribbon' OR v.building_type IS NULL)
+        AND v.most_recent_order = 1
+        AND CAST(SUBSTR(v.coordinates_lat_lon, 1, INSTR(v.coordinates_lat_lon, ',') - 1) AS FLOAT) < 51.6712
+        AND v.city NOT IN ('Białołęka', 'Bucze', 'Trzebcz', 'Wilków', 'Serby', 'Grodziec Mały', 'Pęcław', 'Kaczyce', 'Kotla')
+        AND (LOWER(v.description) NOT LIKE '%do remontu%' AND LOWER(v.description) NOT LIKE '%całkowitego remontu%')
+        AND (
+            (v.city = 'Głogów' AND v.entity IN ('flats', 'houses'))
+            OR (v.city <> 'Głogów' AND v.entity = 'houses')
+        )
+        AND (
+                (v.street LIKE '%łowiańska%')
+            OR (v.rooms > 3 AND v.area > 75 AND v.floor < 3 AND v.entity = 'flats' AND v.market = 'secondary' AND v.price <= 650000)
+            OR (v.rooms > 3 AND v.area > 75 AND v.entity = 'flats' AND (v.market = 'primary' OR v.construction_status = 'to_completion') AND v.price <= 600000)
+            OR (v.rooms > 4 AND price < 550000)
+            OR (v.rooms > 2 AND v.area > 100 AND v.price < 400000)
+            OR (v.rooms > 3 AND v.construction_status = 'ready_to_use' AND v.price < 900000 AND v.wyposazenie_json <> '[]')
+            OR (v.rooms > 4 AND v.entity = 'houses' AND v.price < 550000)
+            OR (v.rooms > 4 AND v.entity = 'houses' AND v.price < 900000 AND v.construction_status = 'ready_to_use')
+            OR (v.rooms = -1)
+        )
+    """
