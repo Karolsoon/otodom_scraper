@@ -96,7 +96,7 @@ class Page_Processor:
             "price_per_m2": result.get('characteristics', {}).get('cena za metr', {}).get('value', None),
             "floors": parser.parse_floor(result.get('characteristics', {}).get('Liczba pięter', {}).get('value', None)),
             "floor": parser.parse_floor(result.get('characteristics', {}).get('Piętro', {}).get('localizedValue', None)),
-            "rooms": result.get('characteristics', {}).get('Liczba pokoi', {}).get('value', None),
+            "rooms": result.get('characteristics', {}).get('Liczba pokoi', {}).get('value', -1),
             "build_year": result.get('characteristics', {}).get('Rok budowy', {}).get('value', None) or result.get('build_year'),
             "building_type": result.get('characteristics', {}).get('Rodzaj zabudowy', {}).get('value', None),
             "building_material": result.get('characteristics', {}).get('Materiał budynku', {}).get('value', None),
