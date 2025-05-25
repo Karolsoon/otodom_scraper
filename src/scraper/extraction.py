@@ -81,13 +81,29 @@ class Page_Processor:
         soup = self.make_soup(raw_html=raw_html)
         return self.get_item_from(soup, config.HIERARCHIES['pagination'])
 
-    def prepare_data_for_insert(self, result: dict[str, dict[str, str|int|None]]) -> dict[str, str|int|None]:
+    def prepare_data_for_insert(
+            self,
+            result: dict[str, dict[str, str|int|None]],
+            response: requests.Response
+        ) -> dict[str, str|int|None]:
         """
         Prepare data for insert into the database.
         The result input is the output after parsing a single detail page.
         """
+        status_code_to_status_map = {
+            range(200, 300): 1,
+            range(300, 400): 1, # TODO: handle redirects earlier
+            range(400, 500): 2,
+            range(500, 600): 1
+        }
+        status = [
+            v
+            for k, v
+            in status_code_to_status_map.items()
+            if response.status_code in k
+        ][0]
         return {
-            "status": 1,
+            "status": status,
             "city": result.get('city', {}).get('name', None),
             "postal_code": result.get('city', {}).get('id', None),
             "street": parser.parse_street(result.get('street', None)),

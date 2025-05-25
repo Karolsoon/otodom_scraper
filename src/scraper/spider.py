@@ -186,12 +186,22 @@ class Scraper_Service:
 
         """
         for item in detail_page_audit_items:
-            if item.response.status_code in range(400, 500):
+            updated_at = self.run_time
+            expired_at = None
+            status = 1
+
+            if item.response.status_code in range(400, 500):   # SET status 2 when insertinf new offer row
                 log.info(f'EXPIRED {item.url_id}')
-                self.db.update_url(id4=item.url_id, updated_at=self.run_time, expired_at=self.run_time, status=2)
+                status = 2
+                expired_at = self.run_time
             else:
-                self.db.update_url(id4=item.url_id, updated_at=self.run_time)
                 log.debug(f'UPDATE LAST_VISITED {item.url_id}')
+
+            self.db.execute_no_return(
+                queries.Urls.update_status,
+                (status, updated_at, expired_at, item.url_id)
+            )
+
 
             # TODO: make a proper mapping of status_codes and messages and set item.error_step if required
             # and take proper actions i.e. GONE is not a legit error, it's just a flag to change statuses to 2
@@ -208,6 +218,15 @@ class Scraper_Service:
         self.file_util.create_file(config.DB_NAME)
         self.db.create_tables()
 
+    def pick_up_tasks_manually(self) -> list[Detail_Page_Audit_Item]:
+        """
+        Parse the detail pages manually.
+        This is used when the detail pages were downloaded before and need to be parsed again.
+        """
+        detail_page_audit_items = self.parse_detail_pages(None)
+        self.__insert_parsed_offer_to_db(detail_page_audit_items)
+        self.__set_google_maps_addresses()
+
     def parse_detail_pages(
             self,
             detail_page_audit_items: list[Detail_Page_Audit_Item]|None
@@ -223,9 +242,9 @@ class Scraper_Service:
                           show_speed=False):
             offer_data = self.__parse_detail_page(item.filepath)
             item.parsed_at = dt.now().isoformat()
-            record = self.processor.prepare_data_for_insert(offer_data)
-            record['status'] = db.get_latest_id4_status(item.url_id)
-            item.extracted_offer_data = record
+            item.extracted_offer_data = self.processor.prepare_data_for_insert(
+                offer_data,
+                item.response)
 
         return detail_page_audit_items
             
@@ -284,7 +303,16 @@ class Scraper_Service:
             address_data = Reverse_Geocoding.get_geo(latlon)
             address_data['maps_url'] = Reverse_Geocoding.get_url(latlon)
             address_data['coordinates_lat_lon'] = latlon
-            db.insert_address_derrived(row.get('url_id'), **address_data)
+            db.execute_no_return(
+                queries.Normalized_Addresses.insert_address,
+                (row.get('url_id'),
+                 address_data['city'],
+                 address_data['postal_code'],
+                 address_data['street'],
+                 address_data['maps_url'],
+                 address_data['coordinates_lat_lon']
+                )
+            )
             sleep(0.25)
 
     def __get_number_of_past_failed_tasks(self, detail_page_audit_items: list[Detail_Page_Audit_Item]) -> int:
