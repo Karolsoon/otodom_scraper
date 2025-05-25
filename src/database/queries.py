@@ -12,6 +12,18 @@ class Urls:
             expired_at DATETIME DEFAULT NULL
         );
     """
+    get_status = f"""
+        SELECT status
+        FROM {TABLE_NAME}
+        WHERE url_id = ?
+        ORDER BY id DESC
+        LIMIT 1;
+    """
+    update_status = f"""
+        UPDATE {TABLE_NAME}
+        SET status = ?, updated_at = ?, expired_at = ?
+        WHERE url_id = ? and status = 1
+    """
 
 
 class Audit_Logs:
@@ -56,9 +68,10 @@ class Audit_Logs:
         WHERE l.visited_at IS NULL
     """
     get_for_parsing = f"""
-        SELECT l.id, l.url_id, l.visited_at, l.html_file_path as filepath
+        SELECT l.id, l.url_id, l.visited_at, l.html_file_path as filepath, u.url
         FROM {TABLE_NAME} l
-        WHERE l.visited IS NOT NULL
+        LEFT OUTER JOIN {Urls.TABLE_NAME} u ON u.url_id = l.url_id
+        WHERE l.visited_at IS NOT NULL
           AND l.parsed_at IS NULL
     """
 
@@ -208,6 +221,10 @@ class Normalized_Addresses:
         WHERE NOT EXISTS (
             SELECT 1 FROM {TABLE_NAME} WHERE url_id = o.url_id AND coordinates_lat_lon = o.coordinates_lat_lon
         );
+    """
+    insert_address = f"""
+        INSERT INTO {TABLE_NAME} (url_id, city, postal_code, street, maps_url, coordinates_lat_lon)
+        VALUES (?, ?, ?, ?, ?, ?);
     """
 
 
@@ -367,7 +384,7 @@ class Views:
 
 
 class Watchdog:
-    new_interesting_offers_last_1_day = f"""
+    get_new_interesting_offers_last_1_day = f"""
         SELECT DISTINCT v.*
         FROM v_offers_change_history_all v
         LEFT OUTER JOIN urls u ON u.url_id = v.url_id

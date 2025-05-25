@@ -119,29 +119,6 @@ def _get_filter_clause(filters: list[tuple[str, str|int]]|None) -> str:
     return filter_clause
 
 
-def get_latest_id4_status(url_id: str) -> int:
-    """
-    Returns the int status of a url_id from the urls table.
-    1  - active
-    2  - historical/expired
-    -1 - not found in db
-    """
-    conn = connect()
-    cursor = conn.cursor()
-    cursor.execute('''
-        SELECT u.status
-        FROM urls u
-        WHERE url_id = ?
-        ORDER BY id DESC
-        LIMIT 1
-    ''', (url_id,))
-    status = cursor.fetchone()
-    conn.close()
-    if len(status):
-        return list(status)[0]
-    return -1
-
-
 def insert_url_if_not_exists(id4: str, url: str, timestamp: str, house_or_flat: str) -> int:
     """
     Insert a URL into the urls table.
@@ -172,61 +149,6 @@ def insert_url_if_not_exists(id4: str, url: str, timestamp: str, house_or_flat: 
         log.error(f'FAILED {id4}')
         log.exception(ex)
         return 0
-    finally:
-        conn.close()
-
-def update_url(
-        id4: str,
-        updated_at: str,
-        expired_at: str|None=None,
-        status: int=1) -> int:
-    """
-    Update the updated_at of a URL
-    which has status = 1
-    """
-    conn = connect()
-    cursor = conn.cursor()
-    try:
-        cursor.execute('''
-            UPDATE urls
-            SET status = ?, updated_at = ?, expired_at = ?
-            WHERE url_id = ? and status = 1
-        ''', (status, updated_at, expired_at, id4))
-        conn.commit()
-        log.debug(f'OK {id4}')
-        return 1
-    except sqlite3.IntegrityError as ex:
-        log.error(f'FAILED {id4}')
-        log.exception(ex)
-        return 0
-    finally:
-        conn.close()
-
-
-def insert_audit_log(
-    id4: str,
-    status_code: str,
-    html_file_path: str,
-    error_message: str,
-    visited_at: str,
-    status: int=1
-) -> bool:
-    """
-    Insert an audit log into the audit_logs table.
-    """
-    conn = connect()
-    cursor = conn.cursor()
-    try:
-        cursor.execute('''
-            INSERT INTO audit_logs (url_id, status_code, html_file_path, error_message, status, visited_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (id4, status_code, html_file_path, error_message, status, visited_at))
-        conn.commit()
-        return True
-    except sqlite3.IntegrityError as ex:
-        log.error(f'FAILED {id4}')
-        log.exception(ex)
-        return False
     finally:
         conn.close()
 
@@ -269,28 +191,3 @@ def upsert_offer(id4: str, entity: str, data: dict[str, str|int|None]) -> None:
         log.warning(f'FAILED {data["url_id"]}, {ex}')
         conn.close()
         return 0
-
-
-def insert_address_derrived(
-    id4: str,
-    city: str,
-    postal_code: str,
-    street: str,
-    maps_url: str,
-    coordinates_lat_lon: str
-) -> None:
-    """
-    Insert an address into the normalized_addresses table.
-    """
-    try:
-        conn = connect()
-        cursor = conn.cursor()
-        cursor.execute('''
-            INSERT INTO normalized_addresses (url_id, city, postal_code, street, maps_url, coordinates_lat_lon)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (id4, city, postal_code, street, maps_url, coordinates_lat_lon))
-        conn.commit()
-    except sqlite3.IntegrityError as ex:
-        log.error(f'ALREADY EXISTS {id4}')
-    finally:
-        conn.close()
