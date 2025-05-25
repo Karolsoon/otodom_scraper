@@ -6,9 +6,11 @@ import cv2
 import numpy as np
 from rich.progress import track
 
+import config
 from src.database import db, queries
 from src.utils.file_utils import File_Util
 from src.utils.http_util import HTTP_Util
+from src.watchman.notifications import SMS
 from src.utils.log_util import get_logger
 
 
@@ -74,6 +76,22 @@ class Watchdog:
             qty = self.__download_images(url_id=url_id, image_url_list=image_url_list)
             added += qty
         log.info(f'{added} new images for {url_id}')
+
+    def notify_about_recent_good_offer(self):
+        good_offers = db.execute_with_return(
+            queries.Watchdog.get_new_interesting_offers_last_1_day
+        )
+        log.info(f'Found {len(good_offers)} interesting offers.')
+        if len(good_offers) > 0:
+            print('**' * 40)
+            for offer in good_offers:
+                print(f'{offer["url_id"]} - {offer["price"]}PLN - {offer["rooms"]} pokoi - {offer["area"]}m2\n{offer["url"]}')
+                print('')
+            messages = self.__make_sms_message(good_offers)
+            for i, message in enumerate(messages):
+                log.info(f'Sending SMS {i} of {len(messages)}')
+                SMS.send(message, config.SMS_NUMBER_TO_NOTIFY)
+                sleep(1)
 
     def __download_images(self, url_id: str, image_url_list: list[str]) -> int:
         """
@@ -169,3 +187,28 @@ class Watchdog:
         if (sharpness > 100 and colorfulness < 30 and monotone > 180) or (22 < colorfulness < 30 and sharpness > 60) and monotone > 180:
             return 'floor_plan'
         return "real_estate"
+
+    def __make_sms_message(self, offers: list[dict[str, str]]) -> list[str]:
+        """
+        Basically this function takes the offer city, entity type, price, rooms, area and url from the 
+        offers list and creates an SMS message.
+        It should be used in the SMS.send() method.
+        It should fit the limit of 160 characters.
+        1 offer is 1 SMS message
+        """
+        lang_map = {
+            'houses': 'dom',
+            'flats': 'mieszkanie'
+        }
+        messages = []
+        for offer in offers:
+            city = offer['city']
+            entity = lang_map.get(offer['entity'], offer['entity'])
+            price = offer['price']
+            rooms = offer['rooms']
+            area = offer['area']
+            url = offer['url']
+            message = f'{entity}, {rooms}pokoje, {area}m2\n{url}'
+            messages.append(message)
+        return messages
+        
