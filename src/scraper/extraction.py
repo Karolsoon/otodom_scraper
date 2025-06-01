@@ -96,12 +96,15 @@ class Page_Processor:
             range(400, 500): 2,
             range(500, 600): 1
         }
-        status = [
-            v
-            for k, v
-            in status_code_to_status_map.items()
-            if response.status_code in k
-        ][0]
+        if response:
+            status = [
+                v
+                for k, v
+                in status_code_to_status_map.items()
+                if response.status_code in k
+            ][0]
+        else:
+            status = 2
         return {
             "status": status,
             "city": result.get('city', {}).get('name', None),
@@ -261,7 +264,7 @@ class Link_Extractor:
         return url
     
     def __get_base_url(self) -> str:
-        return self.START_URLS.get(self.listing, None)
+        return self.START_URLS.get(self.listing, {}).get('url', None)
 
     def __pagination_iterator(self):
         if not self.pagination:

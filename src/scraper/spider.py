@@ -21,7 +21,7 @@ class Scraper_Service:
 
     def __init__(
             self,
-            listing_for: str = 'houses',
+            listing_for: str,
             run_time: str = dt.now().isoformat(),
             extractor: Link_Extractor=Link_Extractor,
             processor: Page_Processor=Page_Processor,
@@ -116,7 +116,11 @@ class Scraper_Service:
         Creates audit logs for offers (details), that are not on the current listing
         and are still active in the urls table - potentially expired.
         """
-        db_url_ids = set([self.file_util.get_id4(x) for x in self.db.get_active_urls(entity=self.listing_for)])
+        db_url_ids = set([
+            self.file_util.get_id4(x['url'])
+            for x
+            in self.db.execute_with_return(queries.Urls.get_active_urls_by_entity, 
+                                           (self.listing_for,))])
         current_url_ids = set([self.file_util.get_id4(x) for x in self.extractor.detail_urls])
         url_ids_not_in_listing = db_url_ids.difference(current_url_ids)
         count = 0
@@ -137,7 +141,8 @@ class Scraper_Service:
         """
         for url in self.extractor.detail_urls:
             id4 = self.file_util.get_id4(url)
-            if self.db.insert_url_if_not_exists(id4, url, self.run_time, self.listing_for):
+            if self.db.execute_with_return(db.queries.Urls.create_if_not_exists,
+                                           (id4, url, 1, self.run_id, self.run_id, id4)):
                 log.info(f'NEW {id4}')
                 self.new_url_ids.append(id4)
 
@@ -186,20 +191,20 @@ class Scraper_Service:
 
         """
         for item in detail_page_audit_items:
-            updated_at = self.run_time
-            expired_at = None
+            updated_run_id = self.run_id
+            expired_run_id = None
             status = 1
 
             if item.response.status_code in range(400, 500):   # SET status 2 when insertinf new offer row
                 log.info(f'EXPIRED {item.url_id}')
                 status = 2
-                expired_at = self.run_time
+                expired_run_id = self.run_id
             else:
                 log.debug(f'UPDATE LAST_VISITED {item.url_id}')
 
             self.db.execute_no_return(
                 queries.Urls.update_status,
-                (status, updated_at, expired_at, item.url_id)
+                (status, updated_run_id, expired_run_id, item.url_id)
             )
 
 
