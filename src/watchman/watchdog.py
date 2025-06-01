@@ -89,7 +89,7 @@ class Watchdog:
                 print('')
             messages = self.__make_sms_message(good_offers)
             for i, message in enumerate(messages):
-                log.info(f'Sending SMS {i} of {len(messages)}')
+                log.info(f'Sending SMS {i + 1} of {len(messages)}')
                 SMS.send(message, config.SMS_NUMBER_TO_NOTIFY)
                 sleep(1)
 
