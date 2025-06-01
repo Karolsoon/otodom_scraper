@@ -23,5 +23,3 @@ w.notify_about_recent_good_offer()
 # TODO: handle redirects in scraper.
 
 # TODO: add logging of errors for run_ids
-
-# TODO: replace created_at and updated_at in urls table with the run_id instead of timestamp.
