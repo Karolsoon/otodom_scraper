@@ -14,9 +14,18 @@ SMS_NUMBER_TO_NOTIFY = SECRETS.get('SMS_NUMBER_TO_NOTIFY')
 
 DB_NAME = 'src/database/links.sqlite3'
 START_URLS = {
-    'houses_glogow': "https://www.otodom.pl/pl/wyniki/sprzedaz/dom/dolnoslaskie/glogowski/gmina-miejska--glogow/glogow?ownerTypeSingleSelect=ALL&distanceRadius=15&areaMin=70&viewType=listing",
-    'houses_radwanice': 'https://www.otodom.pl/pl/wyniki/sprzedaz/dom/dolnoslaskie/polkowicki/radwanice?distanceRadius=3&limit=36&ownerTypeSingleSelect=ALL&roomsNumber=%5BFOUR%2CFIVE%2CSIX_OR_MORE%5D&by=DEFAULT&direction=DESC&viewType=listing',
-    'flats': 'https://www.otodom.pl/pl/wyniki/sprzedaz/mieszkanie/dolnoslaskie/glogowski/gmina-miejska--glogow/glogow?priceMax=1500000&areaMin=60&distanceRadius=5&viewType=listing'
+    'houses_glogow': {
+        'url': "https://www.otodom.pl/pl/wyniki/sprzedaz/dom/dolnoslaskie/glogowski/gmina-miejska--glogow/glogow?ownerTypeSingleSelect=ALL&distanceRadius=15&areaMin=70&viewType=listing",
+        'entity_type': 'houses'
+    },
+    'houses_radwanice': {
+        'url': 'https://www.otodom.pl/pl/wyniki/sprzedaz/dom/dolnoslaskie/polkowicki/radwanice?distanceRadius=3&limit=36&ownerTypeSingleSelect=ALL&roomsNumber=%5BFOUR%2CFIVE%2CSIX_OR_MORE%5D&by=DEFAULT&direction=DESC&viewType=listing',
+        'entity_type': 'houses'
+    },
+    'flats': {
+        'url': 'https://www.otodom.pl/pl/wyniki/sprzedaz/mieszkanie/dolnoslaskie/glogowski/gmina-miejska--glogow/glogow?priceMax=1500000&areaMin=60&distanceRadius=5&viewType=listing',
+        'entity_type': 'flats'
+    }
 }
 DOMAIN_NAME = 'https://www.otodom.pl:443'
 OFFER_LINK_STARTSWITH = '/pl/oferta/'

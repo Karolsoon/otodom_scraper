@@ -1,3 +1,27 @@
+class Run_Logs:
+    TABLE_NAME = 'run_logs'
+    DDL = f"""
+        CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            entity TEXT NOT NULL,
+            started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            finished_at DATETIME NULL,
+            is_success BOOLEAN NOT NULL DEFAULT false
+        );
+    """
+    create_log = f"""
+        INSERT INTO {TABLE_NAME} (entity, started_at) VALUES
+            (?, ?)
+        RETURNING id;
+    """
+    update_finished_and_status = f"""
+        UPDATE {TABLE_NAME}
+        SET finished_at = ?,
+            is_success = ?
+        WHERE id = ?
+    """
+
+
 class Urls:
     TABLE_NAME = 'urls'
     DDL = f"""
@@ -5,11 +29,10 @@ class Urls:
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             url_id TEST NOT NULL,
             url TEXT NOT NULL,
-            entity TEXT NOT NULL,
             status INT NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            expired_at DATETIME DEFAULT NULL
+            created_run_id INTEGER NOT NULL,
+            updated_run_id INTEGER NULL,
+            expired_run_id INTEGER NULL
         );
     """
     get_status = f"""
@@ -19,10 +42,29 @@ class Urls:
         ORDER BY id DESC
         LIMIT 1;
     """
+    create_if_not_exists = f"""
+        INSERT INTO {TABLE_NAME} (url_id, url, status, created_run_id, updated_run_id)
+        SELECT 
+            ? as url_id,
+            ? as url,
+            ? as status,
+            ? as created_run_id,
+            ? as updated_run_id
+        WHERE NOT EXISTS (
+            SELECT 1 FROM {TABLE_NAME} WHERE url_id = ? and status = 1)
+        RETURNING *;
+    """
     update_status = f"""
         UPDATE {TABLE_NAME}
-        SET status = ?, updated_at = ?, expired_at = ?
+        SET status = ?, updated_run_id = ?, expired_run_id = ?
         WHERE url_id = ? and status = 1
+    """
+    get_active_urls_by_entity = f"""
+        SELECT url
+        FROM {TABLE_NAME} u
+        LEFT OUTER JOIN {Run_Logs.TABLE_NAME} r ON r.id = u.created_run_id
+        WHERE u.status = 1
+          AND r.entity = ?
     """
 
 
@@ -73,31 +115,6 @@ class Audit_Logs:
         LEFT OUTER JOIN {Urls.TABLE_NAME} u ON u.url_id = l.url_id
         WHERE l.visited_at IS NOT NULL
           AND l.parsed_at IS NULL
-    """
-
-
-class Run_Logs:
-    TABLE_NAME = 'run_logs'
-    DDL = f"""
-        CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            entity TEXT NOT NULL,
-            url_list_path TEXT NULL,
-            started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            finished_at DATETIME NULL,
-            is_success BOOLEAN NOT NULL DEFAULT false
-        );
-    """
-    create_log = f"""
-        INSERT INTO {TABLE_NAME} (entity, started_at) VALUES
-            (?, ?)
-        RETURNING id;
-    """
-    update_finished_and_status = f"""
-        UPDATE {TABLE_NAME}
-        SET finished_at = ?,
-            is_success = ?
-        WHERE id = ?
     """
 
 
@@ -319,7 +336,7 @@ class Views:
                 o.created_at,
                 o.url_id,
                 o.status,
-                o.entity,
+                u.entity,
                 o.city,
                 COALESCE(na.postal_code, o.postal_code) AS postal_code,
                 COALESCE(o.street, na.street) AS street,
@@ -385,32 +402,33 @@ class Views:
 
 class Watchdog:
     get_new_interesting_offers_last_1_day = f"""
-        SELECT DISTINCT v.*
-        FROM v_offers_change_history_all v
-        LEFT OUTER JOIN urls u ON u.url_id = v.url_id
-        WHERE u.created_at > datetime('now', '-1 days')
-        AND v.construction_status IN ('ready_to_use', 'to_completion')
-        AND (LOWER(v.building_type) <> 'ribbon' OR v.building_type IS NULL)
-        AND v.most_recent_order = 1
-        AND CAST(SUBSTR(v.coordinates_lat_lon, 1, INSTR(v.coordinates_lat_lon, ',') - 1) AS FLOAT) < 51.6712
-        AND v.city NOT IN ('Białołęka', 'Bucze', 'Trzebcz', 'Wilków', 'Serby', 'Grodziec Mały', 'Pęcław', 'Kaczyce', 'Kotla')
-        AND (LOWER(v.description) NOT LIKE '%do remontu%' AND LOWER(v.description) NOT LIKE '%całkowitego remontu%')
-        AND (
-            (v.city = 'Głogów' AND v.entity IN ('flats', 'houses'))
-            OR (v.city <> 'Głogów' AND v.entity = 'houses')
-        )
-        AND (
-                (v.street LIKE '%łowiańska%')
-            OR (v.rooms > 3 AND v.area > 75 AND v.floor < 3 AND v.entity = 'flats' AND v.market = 'secondary' AND v.price <= 650000)
-            OR (v.rooms > 3 AND v.area > 75 AND v.entity = 'flats' AND (v.market = 'primary' OR v.construction_status = 'to_completion') AND v.price <= 600000)
-            OR (v.rooms > 4 AND price < 550000)
-            OR (v.rooms > 2 AND v.area > 100 AND v.price < 400000)
-            OR (v.rooms > 3 AND v.construction_status = 'ready_to_use' AND v.price < 900000 AND v.wyposazenie_json <> '[]')
-            OR (v.rooms > 4 AND v.entity = 'houses' AND v.price < 550000)
-            OR (v.rooms > 4 AND v.entity = 'houses' AND v.price < 900000 AND v.construction_status = 'ready_to_use')
-            OR (v.rooms = -1)
-        )
-        AND v.status = 1
+    SELECT DISTINCT v.most_recent_order, u.url_id, v.url, v.status, v.entity, v.city, v.street, v.price, v.price_per_m2, v.area, v.rooms, v.floor, v.maps_url, v.created_at
+    FROM v_offers_change_history_all v
+    LEFT OUTER JOIN urls u ON u.url_id = v.url_id
+    WHERE v.created_at > datetime('now', '-1 days')
+      AND v.construction_status IN ('ready_to_use', 'to_completion')
+      AND (LOWER(v.building_type) <> 'ribbon' OR v.building_type IS NULL)
+      AND v.most_recent_order = 1
+      AND CAST(SUBSTR(v.coordinates_lat_lon, 1, INSTR(v.coordinates_lat_lon, ',') - 1) AS FLOAT) < 51.6712
+      AND v.city NOT IN ('Białołęka', 'Bucze', 'Trzebcz', 'Wilków', 'Serby', 'Grodziec Mały', 'Pęcław', 'Kaczyce', 'Kotla')
+      AND (LOWER(v.description) NOT LIKE '%do remontu%' AND LOWER(v.description) NOT LIKE '%całkowitego remontu%')
+      AND (
+        (v.city = 'Głogów' AND v.entity IN ('flats', 'houses_glogow'))
+        OR (v.city <> 'Głogów' AND v.entity IN ('houses_glogow', 'houses_radwanice'))
+      )
+      AND (
+            (v.street LIKE '%łowiańska%')
+        OR (v.rooms > 3 AND v.area > 75 AND v.floor < 3 AND v.entity = 'flats' AND v.market = 'secondary' AND v.price <= 650000)
+        OR (v.rooms > 3 AND v.area > 75 AND v.entity = 'flats' AND (v.market = 'primary' OR v.construction_status = 'to_completion') AND v.price <= 600000)
+        OR (v.rooms > 4 AND price < 550000)
+        OR (v.rooms > 2 AND v.area > 100 AND v.price < 400000)
+        OR (v.rooms > 3 AND v.construction_status = 'ready_to_use' AND v.price < 900000 AND v.wyposazenie_json <> '[]')
+        OR (v.rooms > 4 AND v.entity IN ('houses_glogow', 'houses_radwanice') AND v.price < 550000)
+        OR (v.rooms > 4 AND v.entity IN ('houses_glogow', 'houses_radwanice') AND v.price < 900000 AND v.construction_status = 'ready_to_use')
+        OR (v.rooms > 3 AND v.entity = 'houses_radwanice' AND v.price < 350000)
+        OR (v.rooms = -1)
+    )
+       AND v.status = 1
     """
     get_all_interesting_offers_incl_expired = f"""
         SELECT DISTINCT v.*
