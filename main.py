@@ -23,3 +23,5 @@ w.notify_about_recent_good_offer()
 # TODO: handle redirects in scraper.
 
 # TODO: add logging of errors for run_ids
+
+# TODO: add a UI or dashboard
