@@ -402,36 +402,37 @@ class Views:
 
 class Watchdog:
     get_new_interesting_offers_last_1_day = f"""
-    SELECT DISTINCT v.most_recent_order, u.url_id, v.url, v.status, v.entity, v.city, v.street, v.price, v.price_per_m2, v.area, v.rooms, v.floor, v.maps_url, v.created_at
-    FROM v_offers_change_history_all v
-    LEFT OUTER JOIN urls u ON u.url_id = v.url_id
-    WHERE v.created_at > datetime('now', '-1 days')
-      AND v.construction_status IN ('ready_to_use', 'to_completion')
-      AND (LOWER(v.building_type) <> 'ribbon' OR v.building_type IS NULL)
-      AND v.most_recent_order = 1
-      AND CAST(SUBSTR(v.coordinates_lat_lon, 1, INSTR(v.coordinates_lat_lon, ',') - 1) AS FLOAT) < 51.6712
-      AND v.city NOT IN ('Białołęka', 'Bucze', 'Trzebcz', 'Wilków', 'Serby', 'Grodziec Mały', 'Pęcław', 'Kaczyce', 'Kotla')
-      AND (LOWER(v.description) NOT LIKE '%do remontu%' AND LOWER(v.description) NOT LIKE '%całkowitego remontu%')
-      AND (
-        (v.city = 'Głogów' AND v.entity IN ('flats', 'houses_glogow'))
-        OR (v.city <> 'Głogów' AND v.entity IN ('houses_glogow', 'houses_radwanice'))
-      )
-      AND (
-            (v.street LIKE '%łowiańska%')
-        OR (v.rooms > 3 AND v.area > 75 AND v.floor < 3 AND v.entity = 'flats' AND v.market = 'secondary' AND v.price <= 650000)
-        OR (v.rooms > 3 AND v.area > 75 AND v.entity = 'flats' AND (v.market = 'primary' OR v.construction_status = 'to_completion') AND v.price <= 600000)
-        OR (v.rooms > 4 AND price < 550000)
-        OR (v.rooms > 2 AND v.area > 100 AND v.price < 400000)
-        OR (v.rooms > 3 AND v.construction_status = 'ready_to_use' AND v.price < 900000 AND v.wyposazenie_json <> '[]')
-        OR (v.rooms > 4 AND v.entity IN ('houses_glogow', 'houses_radwanice') AND v.price < 550000)
-        OR (v.rooms > 4 AND v.entity IN ('houses_glogow', 'houses_radwanice') AND v.price < 900000 AND v.construction_status = 'ready_to_use')
-        OR (v.rooms > 3 AND v.entity = 'houses_radwanice' AND v.price < 350000)
-        OR (v.rooms = -1)
-    )
-       AND v.status = 1
+        SELECT DISTINCT v.most_recent_order, u.url_id, v.url, v.status, v.entity, v.city, v.street, v.price, v.price_per_m2, v.area, v.rooms, v.floor, v.maps_url, v.created_at
+        FROM v_offers_change_history_all v
+        LEFT OUTER JOIN urls u ON u.url_id = v.url_id
+        LEFT OUTER JOIN run_logs rl ON rl.id = v.created_run_id  
+        WHERE rl.started_at > datetime('now', '-1 days')
+        AND v.construction_status IN ('ready_to_use', 'to_completion')
+        AND (LOWER(v.building_type) <> 'ribbon' OR v.building_type IS NULL)
+        AND v.most_recent_order = 1
+        AND CAST(SUBSTR(v.coordinates_lat_lon, 1, INSTR(v.coordinates_lat_lon, ',') - 1) AS FLOAT) < 51.6712
+        AND v.city NOT IN ('Białołęka', 'Bucze', 'Trzebcz', 'Wilków', 'Serby', 'Grodziec Mały', 'Pęcław', 'Kaczyce', 'Kotla')
+        AND (LOWER(v.description) NOT LIKE '%do remontu%' AND LOWER(v.description) NOT LIKE '%całkowitego remontu%')
+        AND (
+            (v.city = 'Głogów' AND v.entity IN ('flats', 'houses_glogow'))
+            OR (v.city <> 'Głogów' AND v.entity IN ('houses_glogow', 'houses_radwanice'))
+        )
+        AND (
+                (v.street LIKE '%łowiańska%')
+            OR (v.rooms > 3 AND v.area > 75 AND v.floor < 3 AND v.entity = 'flats' AND v.market = 'secondary' AND v.price <= 650000)
+            OR (v.rooms > 3 AND v.area > 75 AND v.entity = 'flats' AND (v.market = 'primary' OR v.construction_status = 'to_completion') AND v.price <= 600000)
+            OR (v.rooms > 4 AND price < 550000)
+            OR (v.rooms > 2 AND v.area > 100 AND v.price < 400000)
+            OR (v.rooms > 3 AND v.construction_status = 'ready_to_use' AND v.price < 900000 AND v.wyposazenie_json <> '[]')
+            OR (v.rooms > 4 AND v.entity IN ('houses_glogow', 'houses_radwanice') AND v.price < 550000)
+            OR (v.rooms > 4 AND v.entity IN ('houses_glogow', 'houses_radwanice') AND v.price < 900000 AND v.construction_status = 'ready_to_use')
+            OR (v.rooms > 3 AND v.entity = 'houses_radwanice' AND v.price < 350000)
+            OR (v.rooms = -1)
+        )
+        AND v.status = 1
     """
     get_all_interesting_offers_incl_expired = f"""
-        SELECT DISTINCT v.*
+        SELECT DISTINCT v.most_recent_order, u.url_id, v.url, v.status, v.entity, v.city, v.street, v.price, v.price_per_m2, v.area, v.rooms, v.floor, v.maps_url, v.created_at
         FROM v_offers_change_history_all v
         LEFT OUTER JOIN urls u ON u.url_id = v.url_id
         WHERE v.construction_status IN ('ready_to_use', 'to_completion')
@@ -441,8 +442,8 @@ class Watchdog:
         AND v.city NOT IN ('Białołęka', 'Bucze', 'Trzebcz', 'Wilków', 'Serby', 'Grodziec Mały', 'Pęcław', 'Kaczyce', 'Kotla')
         AND (LOWER(v.description) NOT LIKE '%do remontu%' AND LOWER(v.description) NOT LIKE '%całkowitego remontu%')
         AND (
-            (v.city = 'Głogów' AND v.entity IN ('flats', 'houses'))
-            OR (v.city <> 'Głogów' AND v.entity = 'houses')
+            (v.city = 'Głogów' AND v.entity IN ('flats', 'houses_glogow'))
+            OR (v.city <> 'Głogów' AND v.entity IN ('houses_glogow', 'houses_radwanice'))
         )
         AND (
                 (v.street LIKE '%łowiańska%')
@@ -451,8 +452,10 @@ class Watchdog:
             OR (v.rooms > 4 AND price < 550000)
             OR (v.rooms > 2 AND v.area > 100 AND v.price < 400000)
             OR (v.rooms > 3 AND v.construction_status = 'ready_to_use' AND v.price < 900000 AND v.wyposazenie_json <> '[]')
-            OR (v.rooms > 4 AND v.entity = 'houses' AND v.price < 550000)
-            OR (v.rooms > 4 AND v.entity = 'houses' AND v.price < 900000 AND v.construction_status = 'ready_to_use')
+            OR (v.rooms > 4 AND v.entity IN ('houses_glogow', 'houses_radwanice') AND v.price < 550000)
+            OR (v.rooms > 4 AND v.entity IN ('houses_glogow', 'houses_radwanice') AND v.price < 900000 AND v.construction_status = 'ready_to_use')
+            OR (v.rooms > 3 AND v.entity = 'houses_radwanice' AND v.price < 350000)
             OR (v.rooms = -1)
         )
+        ORDER BY v.created_at DESC, v.most_recent_order ASC, v.price_per_m2 ASC
     """
