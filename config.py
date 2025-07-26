@@ -81,25 +81,50 @@ HIERARCHIES = {
         ]
     },
     'offer_details': {
-        'stages': [
-            {
-                'path': [
-                    {'body': {}},
-                    {'script': {"id": "__NEXT_DATA__"}}
-                ],
-                'transformation': json.loads,
-                'input': 'soup'
+        'version': {
+            0: {
+                'stages': [
+                    {
+                        'path': [
+                            {'body': {}},
+                            {'script': {"id": "__NEXT_DATA__"}}
+                        ],
+                        'transformation': json.loads,
+                        'input': 'soup'
+                    },
+                    {
+                        'path': [
+                            {'props': {}},
+                            {'pageProps': {}},
+                            {'ad': {}}
+                        ],
+                        'transformation': None,
+                        'input': 'json'
+                    }
+                ]
             },
-            {
-                'path': [
-                    {'props': {}},
-                    {'pageProps': {}},
-                    {'ad': {}}
-                ],
-                'transformation': None,
-                'input': 'json'
+            1: {
+                'stages': [
+                    {
+                        'path': [
+                            {'body': {}},
+                            {'script': {"id": "__NEXT_DATA__"}}
+                        ],
+                        'transformation': json.loads,
+                        'input': 'soup'
+                    },
+                    {
+                        'path': [
+                            {'props': {}},
+                            {'pageProps': {}},
+                            {'ad': {}}
+                        ],
+                        'transformation': None,
+                        'input': 'json'
+                    }
+                ]
             }
-        ]
+        }
     },
 }
 

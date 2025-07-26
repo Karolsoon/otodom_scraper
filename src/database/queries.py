@@ -43,6 +43,13 @@ class Urls:
         LIMIT 1;
     """
     create_if_not_exists = f"""
+        WITH check_existence AS (
+            SELECT 1 AS exists_flag
+            FROM {TABLE_NAME}
+            WHERE url_id = ?
+            AND status = 2
+            LIMIT 1
+        )
         INSERT INTO {TABLE_NAME} (url_id, url, status, created_run_id, updated_run_id)
         SELECT 
             ? as url_id,
@@ -51,8 +58,9 @@ class Urls:
             ? as created_run_id,
             ? as updated_run_id
         WHERE NOT EXISTS (
-            SELECT 1 FROM {TABLE_NAME} WHERE url_id = ? and status = 1)
-        RETURNING *;
+            SELECT 1 FROM {TABLE_NAME} WHERE url_id = ? AND status = 1)
+        RETURNING
+            COALESCE((SELECT exists_flag FROM check_existence), 0) AS existence_flag;
     """
     update_status = f"""
         UPDATE {TABLE_NAME}
@@ -296,20 +304,22 @@ class Statistics:
         WITH current_offers AS (
             SELECT DISTINCT
                 u.id,
-                datetime(strftime('%Y-%m-%dT00:00:00', u.created_at)) AS created_at
+                datetime(strftime('%Y-%m-%dT00:00:00', rl.started_at)) AS created_at
             FROM {Urls.TABLE_NAME} u
+            INNER JOIN {Run_Logs.TABLE_NAME} rl ON rl.id = u.created_run_id
             GROUP BY u.id
-            HAVING status = 1
+            HAVING u.status = 1
         ),
 
         expired_offers AS (
             -- Oferty nieaktualne z datą ostatniej aktualizacji
             SELECT DISTINCT
                 u.id,
-                MAX(datetime(strftime('%Y-%m-%dT00:00:00', u.updated_at))) AS updated_at
+                MAX(datetime(strftime('%Y-%m-%dT00:00:00', rl.started_at))) AS updated_at
             FROM {Urls.TABLE_NAME} u
+            INNER JOIN {Run_Logs.TABLE_NAME} rl ON rl.id = u.updated_run_id
             GROUP BY u.id
-            HAVING status = 2
+            HAVING u.status = 2
         )
 
         SELECT
@@ -321,6 +331,7 @@ class Statistics:
         FROM {Date_Dim.TABLE_NAME} dm
         LEFT OUTER JOIN current_offers co ON co.created_at <= dm.date
         LEFT OUTER JOIN expired_offers eo ON eo.updated_at = dm.date
+        WHERE dm.date > '2025-05-01'
         GROUP BY dm.date
         HAVING dm.date <= date('now');
     """
