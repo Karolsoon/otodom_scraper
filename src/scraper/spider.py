@@ -4,6 +4,7 @@ from uuid import uuid4
 
 from rich.progress import track
 
+from src.exceptions import ParsingError
 from src.scraper.extraction import Link_Extractor, Page_Processor, Detail_Page_Audit_Item
 from src.utils.file_utils import File_Util
 from src.database import db, queries
@@ -141,9 +142,18 @@ class Scraper_Service:
         """
         for url in self.extractor.detail_urls:
             id4 = self.file_util.get_id4(url)
-            if self.db.execute_with_return(db.queries.Urls.create_if_not_exists,
-                                           (id4, url, 1, self.run_id, self.run_id, id4)):
-                log.info(f'NEW {id4}')
+            if has_inserted := self.db.execute_with_return(db.queries.Urls.create_if_not_exists,
+                                                           (id4, id4, url, 1, self.run_id, self.run_id, id4)):
+                # TODO: This is trash, rework later
+                # 0 - means new offer inserted
+                # 1 - means offer was already expired but got revived. For more info see the db query.
+
+                flag = has_inserted[0].get('exists_flag')
+                if flag == 0:
+                    log.info(f'NEW {id4}')
+                elif flag == 1:
+                    log.info(f'REVIVED {id4}')
+
                 self.new_url_ids.append(id4)
 
     def __download_offer_pages(self) -> list[Detail_Page_Audit_Item]:
@@ -195,26 +205,23 @@ class Scraper_Service:
             expired_run_id = None
             status = 1
 
-            if item.response.status_code in range(400, 500):   # SET status 2 when insertinf new offer row
-                log.info(f'EXPIRED {item.url_id}')
+            if item.response.status_code in range(400, 500):   # SET status 2 when inserting new offer row
+                log.info(f'{item.url_id} {item.response.status_code} {item.url} EXPIRED')
                 status = 2
                 expired_run_id = self.run_id
+                item.set_error(step='Download', message='EXPIRED')
+            elif item.response.status_code in range(500, 600):
+                log.error(f'{item.url_id} {item.response.status_code} {item.url} SERVER ERROR')
+                item.set_error(step='Download', message='SERVER ERROR') #TODO: Enum? Dataclass?
             else:
-                log.debug(f'UPDATE LAST_VISITED {item.url_id}')
+                log.debug(f'{item.url_id} {item.response.status_code} {item.url} OK')
 
             self.db.execute_no_return(
                 queries.Urls.update_status,
                 (status, updated_run_id, expired_run_id, item.url_id)
             )
 
-
-            # TODO: make a proper mapping of status_codes and messages and set item.error_step if required
-            # and take proper actions i.e. GONE is not a legit error, it's just a flag to change statuses to 2
-            item.error_message = None if item.response.status_code == 200 else 'GONE'
-            db.execute_no_return(
-                queries.Audit_Logs.update_visited,
-                (item.visited_at, item.response.status_code, item.error_step, item.error_message, item.id)
-            )
+            self.update_audit_log(item, step='Download')
 
     def __create_db_if_not_exists(self) -> None:
         """
@@ -222,6 +229,37 @@ class Scraper_Service:
         """
         self.file_util.create_file(config.DB_NAME)
         self.db.create_tables()
+
+    def update_audit_logs(
+            self,
+            detail_page_audit_items: list[Detail_Page_Audit_Item],
+            step: str
+        ) -> None:
+        """
+        Update the audit logs for the detail pages.
+        Performs a database update statement.
+        """
+        for item in detail_page_audit_items:
+            self.update_audit_log(item, step)
+
+    def update_audit_log(self, 
+            item: Detail_Page_Audit_Item,
+            step: str
+        ) -> None:
+        """
+        Update an audit log for a detail page item.
+        """
+        if step == 'Parse':
+            db.execute_no_return(
+                queries.Audit_Logs.update_parsed,
+                (item.parsed_at, item.error_step, item.error_message, item.id)
+            )
+        elif step == 'Download':
+            db.execute_no_return(
+                queries.Audit_Logs.update_visited,
+                (item.visited_at, item.response.status_code, item.error_step, item.error_message, item.id)
+            )
+
 
     def pick_up_tasks_manually(self) -> list[Detail_Page_Audit_Item]:
         """
@@ -237,29 +275,59 @@ class Scraper_Service:
             detail_page_audit_items: list[Detail_Page_Audit_Item]|None
         ) -> list[Detail_Page_Audit_Item]:
         """
-        Parse the detail pages and insert the data into the database.
+        Returns a list of Detail_Page_Audit_Item objects that have a 200 response status code.
         """
         if not detail_page_audit_items:
             detail_page_audit_items = self.make_detail_page_audit_item_objects('parsing')
+        
+        active_detail_page_audit_items = []
+        not_found = parsing_error = 0
         for item in track(detail_page_audit_items,
                           description='Parsing offers...',
                           total=len(detail_page_audit_items),
                           show_speed=False):
-            offer_data = self.__parse_detail_page(item.filepath)
-            item.parsed_at = dt.now().isoformat()
+            item.set_parsed_at()
+            if not self.__is_offer_active(item):
+                continue
+
+            try:
+                offer_data = self.parse_detail_page(item.filepath)
+            except ParsingError as exc:
+                log.warning(f'Failed to parse {item.url_id}')
+                item.set_error(step='Parse', message=str(exc))
+                self.update_audit_log(item, step='Parse')
+                parsing_error += 1
+                continue
+            except FileNotFoundError as exc:
+                log.debug(f'File not found {item.filepath}')
+                item.set_error(step='Parse', message=str(exc))
+                self.update_audit_log(item, step='Parse')
+                not_found += 1
+                continue
+
             item.extracted_offer_data = self.processor.prepare_data_for_insert(
                 offer_data,
                 item.response)
+            active_detail_page_audit_items.append(item)
 
-        return detail_page_audit_items
+        if not_found:
+            log.warning(f'{not_found} files not found')
+        if parsing_error:
+            log.warning(f'{parsing_error} parsing errors')
+        return active_detail_page_audit_items
             
-    def __parse_detail_page(self, file: str) -> dict[str, dict[str, str|int|None]]:
-        # TODO: a try/except with dedicated Exceptions would be nice to catch later
+    def parse_detail_page(self, filepath: str) -> dict[str, dict[str, str|int|None]]:
         offer = {}
-        html = self.file_util.read_file(file)
 
+        if not self.__does_offer_html_exist(filepath):
+            raise FileNotFoundError(f'File not found: {filepath}')
+
+        html = self.file_util.read_file(filepath)
         soup = self.processor.make_soup(html)
-        details = self.processor.get_item_from(soup, config.HIERARCHIES['offer_details'])
+        details = self.processor.get_item_from(soup, config.HIERARCHIES['offer_details']['version'][0]) # TODO: [0] is a version, implement
+
+        if not details:
+            raise ParsingError(f'Could not parse out offer details')
 
         for name, hierarchy in config.HIERARCHY_DETAILS.items():
             value = self.processor.get_item_from(
@@ -281,7 +349,7 @@ class Scraper_Service:
                                    entity=self.listing_for,
                                    data=item.extracted_offer_data):
                 item.error_step = 'Parse'
-                item.error_message = 'Failed while inserting'
+                item.error_message = 'Failed while inserting' if not item.error_message else item.error_message
                 fails.append(item.url_id)
             db.execute_no_return(
                 queries.Audit_Logs.update_parsed,
@@ -331,3 +399,26 @@ class Scraper_Service:
         if self.extractor.detail_urls:
             return len(detail_page_audit_items) - len(self.extractor.detail_urls)
         return 0
+
+    def __does_offer_html_exist(self, offer: Detail_Page_Audit_Item|str) -> bool:
+        """
+        Check if the offer HTML file exists.
+        """
+        if isinstance(offer, Detail_Page_Audit_Item):
+            filepath = offer.filepath
+        elif isinstance(offer, str):
+            filepath = offer
+        else:
+            raise ValueError(f'Expected Detail_Page_Audit_Item or str, got {type(offer)}')
+        return self.file_util.does_file_exist(filepath)
+
+    @staticmethod
+    def __is_offer_active(item: Detail_Page_Audit_Item) -> bool:
+        """
+        Check if the offer is expired based on the response status code and error message.
+        """
+        if item.response and item.response.status_code in range(400, 500):
+            return False
+        if item.error_message == 'EXPIRED':
+            return False
+        return True

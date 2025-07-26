@@ -31,6 +31,37 @@ class Detail_Page_Audit_Item:
     error_step: str|None = None
     error_message: str|None = None
 
+    def set_error(
+            self,
+            step: str|None = None,
+            message: str|None = None,
+            ts: str = dt.now().isoformat()
+        ) -> None:
+        """
+        Set error step and message.
+        """
+        if not step and not message:
+            log.warning(f'{self.url_id} - {self.id} - Pointless error update with None values')
+        self.error_step = step if step else self.error_step
+        self.error_message = message if message else self.error_message
+
+    def set_parsed_at(self, parsed_at: str = dt.now()) -> None:
+        """
+        Set the parsed_at timestamp.
+        Defaults to current timestamp.
+        """
+        if not parsed_at:
+            log.warning(f'{self.url_id} - {self.id} - Pointless parsed_at update with None value')
+        self.parsed_at = parsed_at
+
+    def set_visited_at(self, visited_at: str = dt.now()) -> None:
+        """
+        Set the visited_at timestamp.
+        Defaults to current timestamp.
+        """
+        if not visited_at:
+            log.warning(f'{self.url_id} - {self.id} - Pointless visited_at update with None value')
+        self.visited_at = visited_at
 
 class Page_Processor:
     OFFER_LINK_PREFIX = config.OFFER_LINK_STARTSWITH

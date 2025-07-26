@@ -154,6 +154,13 @@ class File_Util:
             raise ValueError(f'{path} is a file, not a folder')
         p.mkdir(parents=True, exist_ok=True)
 
+    @staticmethod
+    def does_file_exist(path: str) -> bool:
+        """
+        Check if a file exists
+        """
+        return Path(path).exists()
+
     def __create_clean_source_folder(self):
         if not self.source_folder.exists():
             self.source_folder.mkdir(parents=True, exist_ok=False)
