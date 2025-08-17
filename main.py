@@ -1,7 +1,6 @@
 from src.scraper.spider import Scraper_Service
 from src.watchman.watchdog import Watchdog
 
-
 houses_glogow_scraper = Scraper_Service(listing_for='houses_glogow')
 houses_glogow_scraper.run()
 
@@ -20,7 +19,7 @@ w.clean_url_id_folders()
 w.notify_about_recent_good_offer()
 
 
-# TODO: handle redirects in scraper.
+# TODO(Karol): handle redirects in scraper.
 
 # TODO: add logging of errors for run_ids
 
