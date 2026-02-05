@@ -10,7 +10,7 @@ houses_radwanice_scraper.run()
 flats_scraper = Scraper_Service(listing_for='flats')
 flats_scraper.run()
 
-# flats_scraper.pick_up_tasks_manually()
+# houses_radwanice_scraper.pick_up_tasks_manually()
 
 
 w = Watchdog()

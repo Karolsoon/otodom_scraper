@@ -246,6 +246,63 @@ HIERARCHY_DETAILS = {
             'localizedValue'
         ],
     },
+    'topInformation': {
+        'stages': [
+            {
+                'path': [
+                    {'topInformation': {}}
+                ],
+                'transformation': None,
+                'input': 'json'
+            }
+        ],
+        'transformation': transformation.extract_information,
+        'attributes': [
+            'values'
+        ],
+    },
+    'additionalInformation': {
+        'stages': [
+            {
+                'path': [
+                    {'additionalInformation': {}}
+                ],
+                'transformation': None,
+                'input': 'json'
+            }
+        ],
+        'transformation': transformation.extract_information,
+        'attributes': [
+            'values'
+        ],
+    },
+    'featuresByCategory': {
+        'stages': [
+            {
+                'path': [
+                    {'featuresByCategory': {}}
+                ],
+                'transformation': None,
+                'input': 'json'
+            }
+        ],
+        'transformation': transformation.extract_information_list,
+        'attributes': [
+            'values'
+        ],
+    },
+    'target': {
+        'stages': [
+            {
+                'path': [
+                    {'target': {}}
+                ],
+                'transformation': None,
+                'input': 'json'
+            }
+        ],
+        'transformation': None
+    },
     'posted_by': {
         'stages': [
             {

@@ -136,41 +136,142 @@ class Page_Processor:
             ][0]
         else:
             status = 2
-        return {
+        offer = {
             "status": status,
-            "city": result.get('city', {}).get('name', None),
-            "postal_code": result.get('city', {}).get('id', None),
-            "street": parser.parse_street(result.get('street', None)),
-            "price": result.get('characteristics', {}).get('Cena', {}).get('value', None),
-            "area": result.get('characteristics', {}).get('Powierzchnia', {}).get('value', None),
-            "price_per_m2": result.get('characteristics', {}).get('cena za metr', {}).get('value', None),
-            "floors": parser.parse_floor(result.get('characteristics', {}).get('Liczba pięter', {}).get('value', None)),
-            "floor": parser.parse_floor(result.get('characteristics', {}).get('Piętro', {}).get('localizedValue', None)),
-            "rooms": result.get('characteristics', {}).get('Liczba pokoi', {}).get('value', -1),
-            "build_year": result.get('characteristics', {}).get('Rok budowy', {}).get('value', None) or result.get('build_year'),
-            "building_type": result.get('characteristics', {}).get('Rodzaj zabudowy', {}).get('value', None),
-            "building_material": result.get('characteristics', {}).get('Materiał budynku', {}).get('value', None),
-            "rent": result.get('characteristics', {}).get('Czynsz', {}).get('value', None),
-            "windows": result.get('characteristics', {}).get('Okna', {}).get('value', None),
-            "land_area": result.get('characteristics', {}).get('Powierzchnia działki', {}).get('value', None),
-            "construction_status": result.get('characteristics', {}).get('Stan wykończenia', {}).get('value', None),
-            "market": result.get('characteristics', {}).get('Rynek', {}).get('value', None),
+            "city": (
+                result.get('city', {}).get('name', None)
+                or result.get('location', {}).get('address', {}).get('city', {}).get('name', None)
+            ),
+            "postal_code": (
+                result.get('location', {}).get('address', {}).get('postalCode', None)
+                or result.get('location', {}).get('address', {}).get('postalCode', {}).get('name', None)
+                or result.get('city', {}).get('id') if len(result.get('city', {}).get('id')) >= 5 else None
+            ),
+            "street": (
+                parser.parse_street(result.get('street', None))
+                or result.get('location', {}).get('address', {}).get('street', {}).get('name', None)
+            ),
+            "price": (
+                result.get('characteristics', {}).get('Cena', {}).get('value', None)
+                or result.get('characteristics', {}).get('price', {}).get('value', None)
+                or result.get('topInformation', {}).get('price', {}).get('values', None)
+            ),
+            "area": (
+                result.get('characteristics', {}).get('Powierzchnia', {}).get('value', None)
+                or result.get('characteristics', {}).get('m', {}).get('value', None)
+                or result.get('topInformation', {}).get('area', {}).get('values', None)
+                or result.get('target', {}).get('Area')
+            ),
+            "price_per_m2": (
+                result.get('characteristics', {}).get('cena za metr', {}).get('value', None)
+                or result.get('characteristics', {}).get('price_per_m', {}).get('value', None)
+                or result.get('target', {}).get('Price_per_m')
+            ),
+            "floors": (
+                parser.parse_floor(result.get('characteristics', {}).get('Liczba pięter', {}).get('value', None))
+                or parser.parse_floor(result.get('characteristics', {}).get('floors_num', {}).get('value', None))
+                or parser.parse_floor(result.get('additionalInformation', {}).get('floors_num', {}).get('values'))
+                or parser.parse_floor(result.get('target', {}).get('floors_num'))
+            ),
+            "floor": (
+                parser.parse_floor(result.get('characteristics', {}).get('Piętro', {}).get('localizedValue', None))
+                or parser.parse_floor(result.get('characteristics', {}).get('floor', {}).get('localizedValue', None))
+                or parser.parse_floor(result.get('additionalInformation', {}).get('floors', {}).get('values'))
+                or parser.parse_floor(result.get('characteristics', {}).get('floor', {}).get('value', None))
+            ),
+            "rooms": (
+                result.get('characteristics', {}).get('Liczba pokoi', {}).get('value', None)
+                or result.get('characteristics', {}).get('rooms_num', {}).get('value', None)
+                or result.get('topInformation', {}).get('rooms_num', {}).get('values', None)
+                or result.get('target', {}).get('Rooms_num')
+            ),
+            "build_year": (
+                result.get('characteristics', {}).get('Rok budowy', {}).get('value', None)
+                or result.get('characteristics', {}).get('build_year', {}).get('value', None)
+                or result.get('topInformation', {}).get('build_year', {}).get('values', None)
+                or result.get('target', {}).get('Build_year')
+            ),
+            "building_type": (
+                result.get('characteristics', {}).get('Rodzaj zabudowy', {}).get('value', None)
+                or result.get('characteristics', {}).get('building_type', {}).get('value', None)
+                or result.get('topInformation', {}).get('building_type', {}).get('values', None)
+                or result.get('target', {}).get('Building_type')
+            ),
+            "building_material": (
+                result.get('characteristics', {}).get('Materiał budynku', {}).get('value', None)
+                or result.get('characteristics', {}).get('building_material', {}).get('value', None)
+                or result.get('additionalInformation', {}).get('building_material', {}).get('values', None)
+            ),
+            "rent": (
+                result.get('characteristics', {}).get('Czynsz', {}).get('value', None)
+                or result.get('characteristics', {}).get('rent', {}).get('value', None)
+                or result.get('topInformation', {}).get('rent', {}).get('values', None)
+            ),
+            "windows": (
+                result.get('characteristics', {}).get('Okna', {}).get('value', None)
+                or result.get('characteristics', {}).get('windows_type', {}).get('value', None)
+                or result.get('additionalInformation', {}).get('windows_type', {}).get('values', None)
+            ),
+            "land_area": (
+                result.get('characteristics', {}).get('Powierzchnia działki', {}).get('value', None)
+                or result.get('characteristics', {}).get('terrain_area', {}).get('value', None)
+                or result.get('topInformation', {}).get('terrain_area', {}).get('values', None)
+                or result.get('target', {}).get('Terrain_area')
+            ),
+            "construction_status": (
+                result.get('characteristics', {}).get('Stan wykończenia', {}).get('value', None)
+                or result.get('characteristics', {}).get('construction_status', {}).get('value', None)
+                or result.get('topInformation', {}).get('construction_status', {}).get('values', None)
+                or result.get('target', {}).get('Construction_status', None)
+            ),
+            "market": (
+                result.get('characteristics', {}).get('Rynek', {}).get('value', None)
+                or result.get('characteristics', {}).get('market', {}).get('value', None)
+                or result.get('additionalInformation', {}).get('market', {}).get('values', None)
+                or result.get('target', {}).get('MarketType', None)
+                or result.get('market').lower()
+            ),
             "posted_by": result.get('posted_by'),
             "description": result.get('description'),
             "ground_plan": result.get('characteristics', {}).get('Rzut mieszkania', {}).get('value', None),
             "coordinates_lat_lon": ','.join([str(x) for x in result.get('coordinates', {}).values()]) or None,
-            "informacje_dodatkowe_json": str(result.get('other', {}).get('Informacje dodatkowe', [])).replace("'", '"'),
-            "media_json": str(result.get('other', {}).get('Media', [])).replace("'", '"'),
-            "ogrodzenie_json": str(result.get('other', {}).get("Ogrodzenie", [])).replace("'", '"'),
-            "dojazd_json": str(result.get('other', {}).get("Dojazd", [])).replace("'", '"'),
-            "ogrzewanie_json": str(result.get('other', {}).get("Ogrzewanie", [])).replace("'", '"'),
-            "okolica_json": str(result.get('other', {}).get("Okolica", [])).replace("'", '"'),
-            "zabezpieczenia_json": str(result.get('other', {}).get("Zabezpieczenia", [])).replace("'", '"'),
-            "wyposazenie_json": str(result.get('other', {}).get("Wyposażenie", [])).replace("'", '"'),
+            "informacje_dodatkowe_json": str((
+                result.get('other', {}).get("Informacje dodatkowe", []))
+                or result.get('featuresByCategory', {}).get('Informacje dodatkowe')
+            ).replace("'", '"'),
+            "media_json": str((
+                    result.get('other', {}).get('Media', ''))
+                    or result.get('featuresByCategory', {}).get('Media')
+            ).replace("'", '"'),
+            "ogrodzenie_json": str((
+                    result.get('other', {}).get("Ogrodzenie", []))
+                    or result.get('featuresByCategory', {}).get('Ogrodzenie')
+            ).replace("'", '"'),
+            "dojazd_json": str((
+                result.get('other', {}).get("Dojazd", []))
+                or result.get('featuresByCategory', {}).get('Dojazd')
+            ).replace("'", '"'),
+            "ogrzewanie_json": str((
+                result.get('other', {}).get("Ogrzewanie", []))
+                or result.get('featuresByCategory', {}).get('Ogrzewanie')
+            ).replace("'", '"'),
+            "okolica_json": str((
+                result.get('other', {}).get("Okolica", []))
+                or result.get('featuresByCategory', {}).get('Okolica')
+            ).replace("'", '"'),
+            "zabezpieczenia_json": str((
+                result.get('other', {}).get("Zabezpieczenia", []))
+                or result.get('featuresByCategory', {}).get('Zabezpieczenia')
+            ).replace("'", '"'),
+            "wyposazenie_json": str((
+                result.get('other', {}).get("Wyposaenie", []))
+                or result.get('featuresByCategory', {}).get('Wyposaenie')
+            ).replace("'", '"'),
             "images": str(result.get('images_urls', [])).replace("'", '"'),
             "contact": str(result.get('contact')).replace("'", '"'),
             "owner": str(result.get('owner')).replace("'", '"'),
         }
+        return offer
 
     def __transform(self, soup: BeautifulSoup, transformation: Callable) -> Any:
         return transformation(soup.text)
@@ -251,7 +352,7 @@ class Link_Extractor:
                           description='Downloading offers...',
                           total=len(detail_page_audit_items),
                           show_speed=False):
-            sleep(0.25)
+            sleep(randint(5, 25) / 100)
             item.response = self.__fetch_page(item.url)
             item.visited_at = dt.now().isoformat()
         return detail_page_audit_items

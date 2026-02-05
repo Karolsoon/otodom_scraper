@@ -39,7 +39,7 @@ def parse_floor(floor: str|None) -> int|None:
     """
     Parse the floor from the JSON data.
     """
-    if isinstance(floor, int):
+    if isinstance(floor, int) or floor is None:
         return floor
     floor_mapping = {
         'parter': 0,

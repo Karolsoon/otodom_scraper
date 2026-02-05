@@ -55,7 +55,63 @@ def extract_characteristics(
     Returns list of values.
     """
     return {
-        item['label']: {
+        item.get('key', 'default_key'): {
+            key: item[key]
+            for key in keys
+        }
+        for item in data
+    }
+
+
+def extract_information(
+        data: list[dict[str, Any]],
+        keys: list[str]
+) -> dict[str, str]:
+    """
+    Extract value by key from a list of dict into a flat list.
+    Returns list of values.
+
+    Usually a singular item in data looks like this:
+    {
+        "label": "floors_num",
+        "values": [
+            "floors_num::one_floor"
+        ],
+        "unit": "",
+        "__typename": "AdditionalInfo"
+    },
+    """
+    return {
+        item.get('label', 'default_label'): {
+            key: None if len(item['values']) == 0 else item['values'][0].replace(f'{item.get("label")}::', '')
+            for key in keys
+        }
+        for item in data
+    }
+
+
+def extract_information_list(
+        data: list[dict[str, Any]],
+        keys: list[str]
+) -> dict[str, str]:
+    """
+    Extract value by key from a list of dict into a flat list.
+    Returns list of values.
+
+    Usually a singular item in data looks like this:
+        {
+            "label": "Media",
+            "values": [
+                "woda",
+                "prąd",
+                "gaz",
+                "kanalizacja"
+            ],
+            "__typename": "FeatureGroup"
+        },
+    """
+    return {
+        item.get('label', 'default_label'): {
             key: item[key]
             for key in keys
         }
@@ -72,6 +128,6 @@ def extract_features(data: list[dict[str, Any]],
     Returns list of values.
     """
     return {
-        item['label']: item['values']
+        item.get('label', 'default_label'): item['values']
         for item in data
     }

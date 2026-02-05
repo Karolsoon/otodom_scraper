@@ -354,7 +354,6 @@ class Scraper_Service:
         details = self.processor.get_item_from(
             soup, config.HIERARCHIES['offer_details']['version'][0]
         )  # TODO: [0] is a version, implement
-
         if not details:
             raise ParsingError(f'Could not parse out offer details')
 
