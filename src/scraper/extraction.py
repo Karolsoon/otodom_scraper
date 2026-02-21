@@ -31,6 +31,10 @@ class Detail_Page_Audit_Item:
     error_step: str|None = None
     error_message: str|None = None
 
+    updated_run_id: int|None = None
+    expired_run_id: int|None = None
+    status: int|None = None
+
     def set_error(
             self,
             step: str|None = None,

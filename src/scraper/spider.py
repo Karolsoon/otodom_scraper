@@ -214,9 +214,8 @@ class Scraper_Service:
 
         """
         for item in detail_page_audit_items:
-            updated_run_id = self.run_id
-            expired_run_id = None
-            status = 1
+            item.updated_run_id = self.run_id
+            item.status = 1
 
             if item.response.status_code in range(
                 400, 500
@@ -224,8 +223,8 @@ class Scraper_Service:
                 log.info(
                     f'{item.url_id} {item.response.status_code} {item.url} EXPIRED'
                 )
-                status = 2
-                expired_run_id = self.run_id
+                item.status = 2
+                item.expired_run_id = self.run_id
                 item.set_error(step='Download', message='EXPIRED')
             elif item.response.status_code in range(500, 600):
                 log.error(
@@ -239,7 +238,7 @@ class Scraper_Service:
 
             self.db.execute_no_return(
                 queries.Urls.update_status,
-                (status, updated_run_id, expired_run_id, item.url_id),
+                (item.status, item.updated_run_id, item.expired_run_id, item.url_id),
             )
 
             self.update_audit_log(item, step='Download')
