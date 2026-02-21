@@ -1,5 +1,8 @@
 import sqlite3
 
+import psycopg
+from psycopg.rows import dict_row
+
 from src.database import queries
 from src.utils.log_util import get_logger
 import config
@@ -7,14 +10,45 @@ import config
 
 log = get_logger(__name__, 30, True, True)
 
-DB_NAME = config.DB_NAME
+
+PS = '%s' if config.OTODOM_DATABASE_TYPE == 'postgres' else '?'
 
 
-def connect() -> sqlite3.Connection:
+def connect(db_type: str = config.OTODOM_DATABASE_TYPE) -> sqlite3.Connection | psycopg.Connection:
+    """
+    Connect to the database based on the provided type.
+    """
+    if db_type.lower() == 'postgres':
+        return _connect_postgres()
+    elif db_type.lower() == 'sqlite':
+        return _connect_sqlite()
+    else:
+        raise ValueError(f'Unsupported database type: {db_type}')
+
+def _connect_postgres() -> psycopg.Connection:
+    """
+    Connect to the PostgreSQL database.
+    """
+
+    conn = psycopg.connect(
+        host=config.OTODOM_SERVER_NAME,
+        port=config.OTODOM_SERVER_PORT,
+        dbname=config.OTODOM_DATABASE_NAME,
+        user=config.OTODOM_USERNAME,
+        password=config.OTODOM_PASSWORD,
+        row_factory=dict_row,
+    )
+
+    cur = conn.cursor()
+    cur.execute(f'SET search_path TO {config.OTODOM_SCHEMA_NAME}')
+    return conn
+
+
+def _connect_sqlite() -> sqlite3.Connection:
     """
     Connect to the SQLite database.
     """
-    conn = sqlite3.connect(DB_NAME)
+    conn = sqlite3.connect(config.OTODOM_DATABASE_NAME)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -109,22 +143,34 @@ def upsert_offer(id4: str, entity: str, data: dict[str, str|int|None]) -> None:
 
     if get('offers', ['id'], [('url_id', id4)]):
         log.debug(f'SET HISTORICAL {id4}')
-        q = 'UPDATE offers SET status = 2 WHERE url_id = ?'
+        q = f'UPDATE offers SET status = 2 WHERE url_id = {PS}'
         cursor.execute(q, (id4,))
         conn.commit()
 
-    insert_query = """
+    sqlite_placeholders = """
+        :url_id, :status, :entity, :city, :postal_code, :street, :price, :area, :price_per_m2, :floors, :floor, :rooms,
+        :build_year, :building_type, :building_material, :rent, :windows, :land_area, :construction_status, :market, :posted_by,
+        :coordinates_lat_lon, :informacje_dodatkowe_json, :media_json, :ogrodzenie_json, :dojazd_json,
+        :ogrzewanie_json, :okolica_json, :zabezpieczenia_json, :wyposazenie_json, :ground_plan, :images, :description,
+        :contact, :owner
+        """
+
+    psycopg_placeholders = r"""
+        %(url_id)s, %(status)s, %(entity)s, %(city)s, %(postal_code)s, %(street)s, %(price)s, %(area)s, %(price_per_m2)s, %(floors)s, %(floor)s, %(rooms)s,
+        %(build_year)s, %(building_type)s, %(building_material)s, %(rent)s, %(windows)s, %(land_area)s, %(construction_status)s, %(market)s, %(posted_by)s,
+        %(coordinates_lat_lon)s, %(informacje_dodatkowe_json)s, %(media_json)s, %(ogrodzenie_json)s, %(dojazd_json)s,
+        %(ogrzewanie_json)s, %(okolica_json)s, %(zabezpieczenia_json)s, %(wyposazenie_json)s, %(ground_plan)s, %(images)s, %(description)s,
+        %(contact)s, %(owner)s
+        """
+
+    insert_query = f"""
     INSERT INTO offers (
         url_id, status, entity, city, postal_code, street, price, area, price_per_m2, floors, floor, rooms,
         build_year, building_type, building_material, rent, windows, land_area, construction_status, market, posted_by,
         coordinates_lat_lon, informacje_dodatkowe_json, media_json, ogrodzenie_json, dojazd_json, ogrzewanie_json,
         okolica_json, zabezpieczenia_json, wyposazenie_json, ground_plan, images, description, contact, owner
     ) VALUES (
-        :url_id, :status, :entity, :city, :postal_code, :street, :price, :area, :price_per_m2, :floors, :floor, :rooms,
-        :build_year, :building_type, :building_material, :rent, :windows, :land_area, :construction_status, :market, :posted_by,
-        :coordinates_lat_lon, :informacje_dodatkowe_json, :media_json, :ogrodzenie_json, :dojazd_json,
-        :ogrzewanie_json, :okolica_json, :zabezpieczenia_json, :wyposazenie_json, :ground_plan, :images, :description,
-        :contact, :owner
+        {psycopg_placeholders if config.OTODOM_DATABASE_TYPE == 'postgres' else sqlite_placeholders}
     )
     """
     try:

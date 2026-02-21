@@ -15,7 +15,7 @@ from src.utils.log_util import get_logger
 
 
 log = get_logger(__name__, 30, 30, True)
-log.setLevel('INFO')
+log.setLevel(config.LOGGING['levels']['console'])
 
 
 class Watchdog:
@@ -47,7 +47,7 @@ class Watchdog:
         Download images for all url_ids where images were not downloaded yet
         """
         rows = db.execute_with_return(
-            queries.Images.get_all_images_to_download
+            queries.Views.get_all_images_to_download
         )
         added = 0
         image_dict = self.load_image_urls(rows)
@@ -79,7 +79,7 @@ class Watchdog:
 
     def notify_about_recent_good_offer(self):
         good_offers = db.execute_with_return(
-            queries.Watchdog.get_new_interesting_offers_last_1_day
+            queries.Watchdog.get_most_recent_interesting_offers
         )
         log.info(f'Found {len(good_offers)} interesting offers.')
         if len(good_offers) > 0:
@@ -92,6 +92,10 @@ class Watchdog:
                 log.info(f'Sending SMS {i + 1} of {len(messages)}')
                 SMS.send(message, config.SMS_NUMBER_TO_NOTIFY)
                 sleep(1)
+                db.execute_no_return(
+                    queries.Notifications.insert_notification,
+                    (good_offers[i]['url_id'], good_offers[i]['price'])
+                )
 
     def __download_images(self, url_id: str, image_url_list: list[str]) -> int:
         """
@@ -109,7 +113,7 @@ class Watchdog:
                 log.debug(f'SKIP {image_id}')
                 continue
             image, extension, http_status_code = self._fetch_image(image_url)
-            image_path = self._get_image_path(url_id, image_id, extension)
+            image_path = self.get_image_path(url_id, image_id, extension)
             self.file_util.write(image_path, image, mode='wb')
             img_type = self.get_picture_type(str(image_path))
             db.execute_no_return(
@@ -128,7 +132,7 @@ class Watchdog:
             return resp.content, extension, status_code
         return b'', '', status_code
 
-    def _get_image_path(self, url_id: str, image_id: str, extension: str) -> str:
+    def get_image_path(self, url_id: str, image_id: str, extension: str) -> str:
         return self.file_util.source_folder / url_id / f'{image_id}{"" if not extension else "." + extension}'
 
     def _get_image_id(self, url: str) -> str:

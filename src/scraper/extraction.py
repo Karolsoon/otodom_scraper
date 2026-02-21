@@ -15,7 +15,7 @@ from src.utils.http_util import HTTP_Util
 
 
 log = get_logger(__name__, 30, True, True)
-log.setLevel('INFO')
+log.setLevel(config.LOGGING['levels']['console'])
 
 
 @dataclass
@@ -168,10 +168,10 @@ class Page_Processor:
                 or result.get('target', {}).get('Price_per_m')
             ),
             "floors": (
-                parser.parse_floor(result.get('characteristics', {}).get('Liczba pięter', {}).get('value', None))
-                or parser.parse_floor(result.get('characteristics', {}).get('floors_num', {}).get('value', None))
-                or parser.parse_floor(result.get('additionalInformation', {}).get('floors_num', {}).get('values'))
-                or parser.parse_floor(result.get('target', {}).get('floors_num'))
+                parser.parse_floors(result.get('characteristics', {}).get('Liczba pięter', {}).get('value', None))
+                or parser.parse_floors(result.get('characteristics', {}).get('floors_num', {}).get('value', None))
+                or parser.parse_floors(result.get('additionalInformation', {}).get('floors_num', {}).get('values'))
+                or parser.parse_floors(result.get('target', {}).get('floors_num'))
             ),
             "floor": (
                 parser.parse_floor(result.get('characteristics', {}).get('Piętro', {}).get('localizedValue', None))
@@ -180,10 +180,10 @@ class Page_Processor:
                 or parser.parse_floor(result.get('characteristics', {}).get('floor', {}).get('value', None))
             ),
             "rooms": (
-                result.get('characteristics', {}).get('Liczba pokoi', {}).get('value', None)
-                or result.get('characteristics', {}).get('rooms_num', {}).get('value', None)
-                or result.get('topInformation', {}).get('rooms_num', {}).get('values', None)
-                or result.get('target', {}).get('Rooms_num')
+                parser.parse_rooms(result.get('characteristics', {}).get('Liczba pokoi', {}).get('value', None))
+                or parser.parse_rooms(result.get('characteristics', {}).get('rooms_num', {}).get('value', None))
+                or parser.parse_rooms(result.get('topInformation', {}).get('rooms_num', {}).get('values', None))
+                or parser.parse_rooms(result.get('target', {}).get('Rooms_num'))
             ),
             "build_year": (
                 result.get('characteristics', {}).get('Rok budowy', {}).get('value', None)
@@ -237,35 +237,35 @@ class Page_Processor:
             "coordinates_lat_lon": ','.join([str(x) for x in result.get('coordinates', {}).values()]) or None,
             "informacje_dodatkowe_json": str((
                 result.get('other', {}).get("Informacje dodatkowe", []))
-                or result.get('featuresByCategory', {}).get('Informacje dodatkowe')
+                or result.get('featuresByCategory', {}).get('Informacje dodatkowe', [])
             ).replace("'", '"'),
             "media_json": str((
-                    result.get('other', {}).get('Media', ''))
-                    or result.get('featuresByCategory', {}).get('Media')
+                    result.get('other', {}).get('Media', []))
+                    or result.get('featuresByCategory', {}).get('Media', [])
             ).replace("'", '"'),
             "ogrodzenie_json": str((
                     result.get('other', {}).get("Ogrodzenie", []))
-                    or result.get('featuresByCategory', {}).get('Ogrodzenie')
+                    or result.get('featuresByCategory', {}).get('Ogrodzenie', [])
             ).replace("'", '"'),
             "dojazd_json": str((
                 result.get('other', {}).get("Dojazd", []))
-                or result.get('featuresByCategory', {}).get('Dojazd')
+                or result.get('featuresByCategory', {}).get('Dojazd', [])
             ).replace("'", '"'),
             "ogrzewanie_json": str((
                 result.get('other', {}).get("Ogrzewanie", []))
-                or result.get('featuresByCategory', {}).get('Ogrzewanie')
+                or result.get('featuresByCategory', {}).get('Ogrzewanie', [])
             ).replace("'", '"'),
             "okolica_json": str((
                 result.get('other', {}).get("Okolica", []))
-                or result.get('featuresByCategory', {}).get('Okolica')
+                or result.get('featuresByCategory', {}).get('Okolica', [])
             ).replace("'", '"'),
             "zabezpieczenia_json": str((
                 result.get('other', {}).get("Zabezpieczenia", []))
-                or result.get('featuresByCategory', {}).get('Zabezpieczenia')
+                or result.get('featuresByCategory', {}).get('Zabezpieczenia', [])
             ).replace("'", '"'),
             "wyposazenie_json": str((
                 result.get('other', {}).get("Wyposaenie", []))
-                or result.get('featuresByCategory', {}).get('Wyposaenie')
+                or result.get('featuresByCategory', {}).get('Wyposaenie', [])
             ).replace("'", '"'),
             "images": str(result.get('images_urls', [])).replace("'", '"'),
             "contact": str(result.get('contact')).replace("'", '"'),

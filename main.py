@@ -19,6 +19,8 @@ w.clean_url_id_folders()
 w.notify_about_recent_good_offer()
 
 
+# TODO: Batch check for images to download, skip already downloaded ones
+
 # TODO(Karol): handle redirects in scraper.
 
 # TODO(Karol): add logging of errors for run_ids

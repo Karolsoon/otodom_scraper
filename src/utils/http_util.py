@@ -5,7 +5,7 @@ from src.utils.log_util import get_logger
 
 
 log = get_logger(__name__, 30, True, True)
-log.setLevel('INFO')
+log.setLevel(config.LOGGING['levels']['console'])
 
 
 class HTTP_Util:
@@ -37,6 +37,7 @@ class HTTP_Util:
             code = ex.response.status_code
             if code in range(400, 500):
                 log.debug(f'\033[91m{code} EXPIRED\033[0m')
+                log.debug(f'RESPONSE: {response.text}')
             elif code > 500:
                 log.error(f'\033[91m{code} SERVER_FAULT\033[0m')
                 # TODO retry-after?

@@ -1,12 +1,12 @@
 import requests
 
-from config import SMS_APIKEY, SMS_PASSWORD, SMS_NAME
+import config
 from src.utils.log_util import get_logger
 
 
 
 log = get_logger(__name__, 30, True, True)
-log.setLevel('INFO')
+log.setLevel(config.LOGGING['levels']['console'])
 
 
 class SMS:
@@ -17,9 +17,9 @@ class SMS:
     def send(cls, msg: str, number: str) -> dict:
         cls.validate_number(number)
         data = {
-            'key': SMS_APIKEY,
-            'password': SMS_PASSWORD,
-            'from': SMS_NAME,
+            'key': config.SMS_APIKEY,
+            'password': config.SMS_PASSWORD,
+            'from': config.SMS_NAME,
             'to': [number],
             'msg': msg
         }

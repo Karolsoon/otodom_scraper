@@ -5,7 +5,7 @@ from src.utils.log_util import get_logger
 
 
 log = get_logger(__name__, 30, True, True)
-log.setLevel('INFO')
+log.setLevel(config.LOGGING['levels']['console'])
 
 
 class File_Util:

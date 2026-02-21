@@ -1,21 +1,34 @@
 import json
+import os
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 from src.scraper import transformation
 
 
-with open('secrets.json', 'r') as f:
-    SECRETS: dict = json.load(f)
+GCP_API_KEY = os.getenv('GCP_API_KEY')
+SMS_APIKEY = os.getenv('SMS_APIKEY')
+SMS_PASSWORD = os.getenv('SMS_PASSWORD')
+SMS_NAME = os.getenv('SMS_NAME')
+SMS_NUMBER_TO_NOTIFY = os.getenv('SMS_NUMBER_TO_NOTIFY')
+
+OTODOM_DATABASE_TYPE = os.getenv('OTODOM_DATABASE_TYPE', 'sqlite')
+OTODOM_SERVER_NAME = os.getenv('OTODOM_SERVER_NAME', '')
+OTODOM_DATABASE_NAME = os.getenv('OTODOM_DATABASE_NAME', 'src/database/otodom_links.sqlite3')
+OTODOM_SERVER_PORT = os.getenv('OTODOM_SERVER_PORT', '')
+OTODOM_SCHEMA_NAME = os.getenv('OTODOM_SCHEMA_NAME', '')
+OTODOM_USERNAME = os.getenv('OTODOM_USERNAME', '')
+OTODOM_PASSWORD = os.getenv('OTODOM_PASSWORD', '')
 
 
-GCP_API_KEY = SECRETS.get('GCP_API_KEY')
-SMS_APIKEY = SECRETS.get('SMS_APIKEY')
-SMS_PASSWORD = SECRETS.get('SMS_PASSWORD')
-SMS_NAME = SECRETS.get('SMS_NAME')
-SMS_NUMBER_TO_NOTIFY = SECRETS.get('SMS_NUMBER_TO_NOTIFY')
 
-DB_NAME = 'src/database/links.sqlite3'
 START_URLS = {
     'houses_glogow': {
-        'url': "https://www.otodom.pl/pl/wyniki/sprzedaz/dom/dolnoslaskie/glogowski/gmina-miejska--glogow/glogow?ownerTypeSingleSelect=ALL&distanceRadius=15&areaMin=70&viewType=listing",
+        'url': "https://www.otodom.pl:443/pl/wyniki/sprzedaz/dom/dolnoslaskie/glogowski/gmina-miejska--glogow/glogow?ownerTypeSingleSelect=ALL&distanceRadius=15&areaMin=70&viewType=listing",
         'entity_type': 'houses'
     },
     'houses_radwanice': {
@@ -354,6 +367,7 @@ HIERARCHY_DETAILS = {
     }
 }
 
+_linux = 'Mozilla/5.0 (X11; Linux x86_64; CentOS Ubuntu 19.04) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.5957.0 Safari/537.36'
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",

@@ -35,7 +35,7 @@ def parse_street(street: dict[str, str|None]) -> str|None:
         return s
     return street
 
-def parse_floor(floor: str|None) -> int|None:
+def parse_floors(floor: str|None) -> int|None:
     """
     Parse the floor from the JSON data.
     """
@@ -56,3 +56,25 @@ def parse_floor(floor: str|None) -> int|None:
         '> 10': 11
     }
     return floor_mapping.get(floor, None)
+
+
+def parse_rooms(rooms: str|None) -> int|None:
+    """
+    Parse the rooms from the JSON data.
+    """
+    if isinstance(rooms, int) or rooms is None:
+        return rooms
+    rooms_mapping = {
+        '1': 1,
+        '2': 2,
+        '3': 3,
+        '4': 4,
+        '5': 5,
+        '6': 6,
+        '7': 7,
+        '8': 8,
+        '9': 9,
+        '10': 10,
+        'more': 99
+    }
+    return rooms_mapping.get(rooms, None)

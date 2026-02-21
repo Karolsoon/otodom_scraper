@@ -1,6 +1,5 @@
 from datetime import datetime as dt
 from time import sleep
-from uuid import uuid4
 
 from rich.progress import track
 
@@ -17,7 +16,7 @@ from src.utils.gcp_utils import Reverse_Geocoding
 from src.utils.log_util import get_logger
 
 log = get_logger(__name__, 30, True, True)
-log.setLevel('INFO')
+log.setLevel(config.LOGGING['levels']['console'])
 
 
 class Scraper_Service:
@@ -31,7 +30,7 @@ class Scraper_Service:
         processor: Page_Processor = Page_Processor,
         file_util: File_Util = File_Util,
     ):
-        self.run_id = uuid4().hex
+        self.run_id = None
         self.run_time = run_time
         self.listing_for = listing_for
         self.extractor: Link_Extractor = extractor(listing_for, run_time)
@@ -57,11 +56,11 @@ class Scraper_Service:
             detail_page_audit_items = self.parse_detail_pages(detail_page_audit_items)
             self.__insert_parsed_offer_to_db(detail_page_audit_items)
             self.__set_google_maps_addresses()
-            self.__close_run_log(1)
+            self.__close_run_log(True)
         except Exception as ex:
             log.error('Spider failed')
             log.exception(ex)
-            self.__close_run_log(0)
+            self.__close_run_log(False)
 
         log.info(f'Finished scraping {self.listing_for}')
 
@@ -249,7 +248,8 @@ class Scraper_Service:
         """
         Create the database if it does not exist.
         """
-        self.file_util.create_file(config.DB_NAME)
+        if config.OTODOM_DATABASE_TYPE.lower() == 'sqlite':
+            self.file_util.create_file(config.DB_NAME)
         self.db.create_tables()
 
     def update_audit_logs(
